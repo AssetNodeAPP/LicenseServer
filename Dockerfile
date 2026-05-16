@@ -7,7 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY *.py .
 COPY templates/ templates/
-COPY Static/ Static/
 
 ENV LICENSE_DATA_DIR=/app/data
 
