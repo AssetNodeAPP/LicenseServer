@@ -1,0 +1,15 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+.venv
+.venv1
+.idea
+build
+dist
+*.spec
+kb_images/
+chroma_db/
+Iphotos/
+Tphotos/
+docs/

@@ -1,0 +1,31 @@
+
+{% for e in employees %}
+  <tr>
+    <td><strong>{{ e.employee_number or 'N/A' }}</strong></td>
+    <td>{{ e.first_name }} {{ e.last_name }}</td>
+    <td>{{ e.position or '' }}</td>
+    <td>{{ e.department or '' }}</td>
+    <td><span class="badge text-bg-primary badge-store">{{ e.store or 'N/A' }}</span></td>
+    <td>
+      <span class="badge text-bg-{{ 'success' if e.status=='active' else 'secondary' }}">
+        {{ e.status.title() }}
+      </span>
+    </td>
+    <td><small class="text-muted">{{ e.hire_date or '' }}</small></td>
+    <td class="text-end">
+      {% if is_admin %}
+        <a class="btn btn-sm btn-warning" href="{{ url_for('employees_edit', employee_id=e.id) }}">
+          <i class="bi bi-pencil"></i> Edit
+        </a>
+        <form method="post" action="{{ url_for('employees_delete', employee_id=e.id) }}" style="display:inline;" onsubmit="return confirm('Delete employee {{ e.first_name }} {{ e.last_name }}?');">
+          <button class="btn btn-sm btn-danger" type="submit">
+            <i class="bi bi-trash"></i> Delete
+          </button>
+        </form>
+      {% endif %}
+    </td>
+  </tr>
+{% endfor %}
+{% if not employees %}
+<tr><td colspan="8" class="text-center text-muted py-4"><i class='bi bi-inbox'></i> No employees found.</td></tr>
+{% endif %}

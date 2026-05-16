@@ -1,0 +1,1035 @@
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<title>Printer Supplies - Device Inventory</title>
+
+<style>
+body {
+  background: #f8f9fa;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+  max-width: 100%;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+@media (min-width: 1400px) { .container { padding-left: 3rem; padding-right: 3rem; } }
+@media (min-width: 1920px) { .container { padding-left: 4rem; padding-right: 4rem; } }
+@media (min-width: 2560px) { .container { padding-left: 6rem; padding-right: 6rem; } }
+
+/* Navigation Bar */
+.navbar {
+  background: white !important;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  padding: 15px 20px;
+  border: 1px solid #e9ecef;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #2d3748;
+}
+
+.nav-link {
+  color: #2d3748 !important;
+  font-weight: 500;
+  padding: 8px 16px !important;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+  background: #f1f3f5;
+  color: #495057 !important;
+}
+
+.nav-link.active {
+  background: #495057;
+  color: white !important;
+}
+
+/* Page Header */
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: white;
+  border-radius: 15px;
+  padding: 20px 30px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  color: #2d3748;
+  display: inline-block;
+  border: 1px solid #e9ecef;
+}
+
+/* Filter Card */
+.filters-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.form-control, .form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #495057;
+  box-shadow: 0 0 0 4px rgba(73, 80, 87, 0.1);
+  outline: none;
+}
+
+.form-select-sm {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  padding: 8px 16px;
+}
+
+.btn-primary {
+  background: #495057;
+  box-shadow: 0 2px 8px rgba(73, 80, 87, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(73, 80, 87, 0.3);
+  background: #343a40;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(72, 187, 120, 0.4);
+}
+
+.btn-outline-primary {
+  border: 2px solid #495057;
+  color: #495057;
+  background: white;
+}
+
+.btn-outline-primary:hover {
+  background: #495057;
+  color: white;
+}
+
+.btn-outline-secondary {
+  border: 2px solid #e2e8f0;
+  color: #2d3748;
+  background: white;
+}
+
+.btn-outline-secondary:hover {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+/* Summary Cards */
+.summary-cards {
+  margin-bottom: 25px;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+  height: 100%;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.summary-card.active {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+}
+
+.summary-card h5 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: #2d3748;
+}
+
+.summary-card small {
+  color: #718096;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.summary-card.critical {
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.15) 0%, rgba(229, 62, 62, 0.15) 100%);
+  border-color: rgba(245, 101, 101, 0.3);
+}
+
+.summary-card.critical h5 {
+  color: #e53e3e;
+}
+
+.summary-card.low {
+  background: linear-gradient(135deg, rgba(237, 137, 54, 0.15) 0%, rgba(221, 107, 32, 0.15) 100%);
+  border-color: rgba(237, 137, 54, 0.3);
+}
+
+.summary-card.low h5 {
+  color: #dd6b20;
+}
+
+.summary-card.good {
+  background: linear-gradient(135deg, rgba(72, 187, 120, 0.15) 0%, rgba(56, 161, 105, 0.15) 100%);
+  border-color: rgba(72, 187, 120, 0.3);
+}
+
+.summary-card.good h5 {
+  color: #38a169;
+}
+
+/* Printer Cards */
+.printer-card {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+  height: 100%;
+  overflow: hidden;
+}
+
+.printer-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.printer-card .card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 15px 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.printer-card .card-header strong {
+  font-size: 1.1rem;
+}
+
+.last-scan {
+  color: #718096;
+  font-size: 0.75rem;
+  font-weight: 400;
+  display: block;
+  margin-top: 4px;
+}
+
+.printer-card .card-body {
+  padding: 20px;
+}
+
+.printer-info {
+  font-size: 0.85rem;
+  color: #718096;
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.printer-info i {
+  width: 16px;
+  text-align: center;
+  margin-right: 6px;
+  color: #495057;
+}
+
+/* Supply Table */
+.table {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+.table thead th {
+  background: #f8f9fa;
+  color: #495057;
+  border: none;
+  padding: 10px 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table td {
+  padding: 10px 8px;
+  vertical-align: middle;
+}
+
+.supply-critical {
+  background: rgba(245, 101, 101, 0.1);
+}
+
+.supply-low {
+  background: rgba(237, 137, 54, 0.1);
+}
+
+.supply-good {
+  background: rgba(72, 187, 120, 0.05);
+}
+
+/* Progress Bar */
+.progress {
+  height: 24px;
+  border-radius: 8px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.6s ease;
+}
+
+.progress-bar.bg-danger {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%) !important;
+}
+
+.progress-bar.bg-warning {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%) !important;
+}
+
+.progress-bar.bg-success {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+}
+
+/* Badges */
+.badge {
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Pagination */
+.pagination {
+  background: white;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.page-link {
+  border: none;
+  color: #495057;
+  font-weight: 600;
+  margin: 0 2px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.page-link:hover {
+  background: #f1f3f5;
+  color: #212529;
+}
+
+.page-item.active .page-link {
+  background: #495057;
+  color: white;
+}
+
+.page-item.disabled .page-link {
+  color: #cbd5e0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .navbar {
+    padding: 10px 15px;
+  }
+
+  .page-title {
+    font-size: 1.8rem;
+    padding: 15px 20px;
+  }
+
+  .filters-card {
+    padding: 15px;
+  }
+
+  .summary-card h5 {
+    font-size: 2rem;
+  }
+
+  .printer-card .card-header {
+    padding: 12px 15px;
+  }
+
+  .printer-card .card-body {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .summary-card h5 {
+    font-size: 1.75rem;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Top navigation -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3">
+          <div class="container-fluid px-3 px-lg-4">
+            <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
+              <i class="bi bi-house"></i> AssetNode
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav" aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="topNav">
+              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                {% if can_access('home') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}"><i class="bi bi-house"></i> Home</a></li>
+                {% endif %}
+                {% if can_access('list_devices') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('list_devices') }}"><i class="bi bi-laptop"></i> Devices</a></li>
+                {% endif %}
+                {% if can_access('device-lifecycle') %}
+                <li class="nav-item"><a class="nav-link" href="/device-lifecycle"><i class="bi bi-clock-history"></i> Lifecycle</a></li>
+                {% endif %}
+                {% if can_access('list_printers') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('list_printers') }}"><i class="bi bi-printer"></i> Printers</a></li>
+                {% endif %}
+                {% if can_access('tasks_list') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('tasks_list') }}"><i class="bi bi-list-check"></i> Tasks</a></li>
+                {% endif %}
+                {% if can_access('employees_list') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('employees_list') }}"><i class="bi bi-people"></i> Employees</a></li>
+                {% endif %}
+                {% if can_access('items_list') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('items_list') }}"><i class="bi bi-box-seam"></i> Inventory</a></li>
+                {% endif %}
+                {% if can_access('software-licenses') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('software_licenses_page') }}"><i class="bi bi-key"></i> Software</a></li>
+                {% endif %}
+                {% if can_access('printer_supplies') %}
+                <li class="nav-item"><a class="nav-link active" href="{{ url_for('printer_supplies') }}"><i class="bi bi-droplet"></i> Levels</a></li>
+                {% endif %}
+                <li class="nav-item">
+                {% if can_access('printer_supplies') %}
+                    <a class="nav-link" aria-current="page" href="{{ url_for('supply_trends') }}">
+                        <i class="bi bi-graph-up"></i> Trends
+                    </a>
+                        </li>
+                {% endif %}
+                {% if can_access('scanner_page') %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('scanner_page') }}"><i class="bi bi-upc-scan"></i> Scanner</a></li>
+                {% endif %}
+              </ul>
+              <div class="d-flex align-items-center gap-2">
+                {% if logo %}<img src="{{ logo }}" alt="Logo" style="max-height:36px;">{% endif %}
+                {% if user %}<span class="me-2 small text-muted">{{ user.username }} ({{ user.role }})</span>{% endif %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+<div class="container">
+
+  <h3 class="page-title">
+    <i class="bi bi-droplet"></i> Printer Supplies Status
+  </h3>
+
+  <div class="mb-3">
+    <button class="btn btn-warning" onclick="createTasksModal.show()">
+      <i class="bi bi-plus-circle"></i> Create Tasks for Critical Supplies
+    </button>
+  </div>
+
+  <!-- Filter Card -->
+  <div class="filters-card">
+    <form id="filtersForm" method="get">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label">Store</label>
+          <select name="store" class="form-select form-select-sm" onchange="applyFiltersRealtime()">
+            <option value="">All Stores</option>
+            {% for s in stores %}
+              <option value="{{ s }}" {% if s == selected_store %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select form-select-sm" onchange="applyFiltersRealtime()">
+            <option value="">All Statuses</option>
+            <option value="critical" {% if selected_status=='critical' %}selected{% endif %}>Critical</option>
+            <option value="low" {% if selected_status=='low' %}selected{% endif %}>Low</option>
+            <option value="good" {% if selected_status=='good' %}selected{% endif %}>Good</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Department</label>
+          <select name="department" class="form-select form-select-sm" onchange="applyFiltersRealtime()">
+            <option value="">All Departments</option>
+            {% for d in departments %}
+              <option value="{{ d }}" {% if d == selected_department %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Model</label>
+          <select name="model" class="form-select form-select-sm" onchange="applyFiltersRealtime()">
+            <option value="">All Models</option>
+            {% for m in models %}
+              <option value="{{ m }}" {% if m == selected_model %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('printer_supplies') }}" class="btn btn-sm btn-secondary">
+          <i class="bi bi-x-circle"></i> Clear Filters
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row row-cols-2 row-cols-md-4 g-3 summary-cards">
+    <div class="col">
+      <a href="?{% if selected_store %}store={{ selected_store }}&{% endif %}{% if selected_department %}department={{ selected_department }}&{% endif %}{% if selected_model %}model={{ selected_model }}{% endif %}" class="summary-card {% if not selected_status %}active{% endif %}">
+        <h5>{{ total_printers }}</h5>
+        <small>Total Printers</small>
+      </a>
+    </div>
+    <div class="col">
+      <a href="?status=critical{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}" class="summary-card critical {% if selected_status == 'critical' %}active{% endif %}">
+        <h5>{{ total_critical }}</h5>
+        <small>Critical</small>
+      </a>
+    </div>
+    <div class="col">
+      <a href="?status=low{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}" class="summary-card low {% if selected_status == 'low' %}active{% endif %}">
+        <h5>{{ total_low }}</h5>
+        <small>Low</small>
+      </a>
+    </div>
+    <div class="col">
+      <a href="?status=good{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}" class="summary-card good {% if selected_status == 'good' %}active{% endif %}">
+        <h5>{{ total_good }}</h5>
+        <small>Good</small>
+      </a>
+    </div>
+  </div>
+
+  <!-- Pagination Info -->
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="text-muted small">
+      <i class="bi bi-file-text"></i> Showing {{ page_start }}-{{ page_end }} of {{ total_printers }} printers
+    </div>
+    <div class="text-muted small">
+      Page {{ current_page }} of {{ total_pages }}
+    </div>
+  </div>
+
+  <!-- Printers Grid -->
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-3 mb-4">
+    {% for printer in printers %}
+    <div class="col">
+      <div class="printer-card">
+        <div class="card-header">
+          <strong>{{ printer.name }}</strong>
+          <span class="last-scan">
+            <i class="bi bi-clock"></i> {{ printer.timestamp }}
+          </span>
+        </div>
+
+        <div class="card-body">
+          <div class="printer-info">
+            <div><i class="bi bi-laptop"></i>{{ printer.model }}</div>
+            <div><i class="bi bi-hdd-network"></i>{{ printer.ip }}</div>
+            {% if printer.department %}<div><i class="bi bi-building"></i>{{ printer.department }}</div>{% endif %}
+            {% if printer.store %}<div><i class="bi bi-shop"></i>{{ printer.store }}</div>{% endif %}
+          </div>
+
+          <table class="table table-sm">
+<thead>
+              <tr>
+                <th style="font-size: 0.8rem;">Supply</th>
+                <th style="font-size: 0.8rem;">Level</th>
+                <th style="font-size: 0.8rem;">Status</th>
+                <th style="font-size: 0.8rem;">Est. Days Left</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in printer.supplies %}
+              <tr class="{{ s.css_class }}">
+<td style="font-size: 0.75rem;">
+<a href="{{ url_for('supply_trends') }}?supply={{ s.name + ' %' | urlencode }}&printer={{ printer.name | urlencode }}"
+   style="text-decoration: none; color: inherit; cursor: pointer;"
+   title="Click to view trend">
+  {{ s.name }}
+  <i class="bi bi-graph-up" style="font-size: 0.7em; opacity: 0.6;"></i>
+</a>
+                </td>
+                <td>
+                  <div class="progress">
+                    <div class="progress-bar {{ s.progress_class }}" style="width:{{ s.percent }}%">
+                      {{ s.value }}
+                    </div>
+                  </div>
+                </td>
+<td>
+                  {% if s.percent <= 10 %}
+                    <span class="badge bg-danger">Crit</span>
+                  {% elif s.percent <= 25 %}
+                    <span class="badge bg-warning">Low</span>
+                  {% else %}
+                    <span class="badge bg-success">OK</span>
+                  {% endif %}
+                </td>
+                <td style="font-size: 0.75rem;">
+                  {% if s.days_left is not none %}
+                    {% if s.days_left <= 7 %}
+                      <span class="text-danger fw-bold">{{ s.days_left }} days</span>
+                    {% elif s.days_left <= 30 %}
+                      <span class="text-warning fw-bold">{{ s.days_left }} days</span>
+                    {% else %}
+                      <span class="text-success">{{ s.days_left }} days</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="text-muted">N/A</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          {% if printer.id %}
+          <div class="d-grid gap-2 mt-3">
+            <button class="btn btn-primary btn-sm" onclick="openConsumablesModal({{ printer.id }})">
+              <i class="bi bi-cart"></i> Replace Consumables
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="d-flex justify-content-center mt-4">
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item {% if current_page <= 1 %}disabled{% endif %}">
+          <a class="page-link" href="?page=1{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">First</a>
+        </li>
+        <li class="page-item {% if current_page <= 1 %}disabled{% endif %}">
+          <a class="page-link" href="?page={{ current_page - 1 }}{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Prev</a>
+        </li>
+
+        {% for p in page_range %}
+          {% if p == '...' %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+          {% else %}
+            <li class="page-item {% if p == current_page %}active{% endif %}">
+              <a class="page-link" href="?page={{ p }}{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ p }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+
+        <li class="page-item {% if current_page >= total_pages %}disabled{% endif %}">
+          <a class="page-link" href="?page={{ current_page + 1 }}{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Next</a>
+        </li>
+        <li class="page-item {% if current_page >= total_pages %}disabled{% endif %}">
+          <a class="page-link" href="?page={{ total_pages }}{% if selected_store %}&store={{ selected_store }}{% endif %}{% if selected_department %}&department={{ selected_department }}{% endif %}{% if selected_model %}&model={{ selected_model }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Last</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Consumables Modal -->
+<div class="modal fade" id="consumablesModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cart"></i> Printer Consumables</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="consumablesContent">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="createTasksModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-check-circle"></i> Create Tasks for Critical Supplies</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="createTasksContent">
+          <p>Create tasks for all critical supplies (&lt;=10%) that do not already have open tasks?</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="createTasksCloseBtn">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="confirmCreateTasks()">
+          <i class="bi bi-plus-circle"></i> Create Tasks
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let consumablesModal;
+let createTasksModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+  consumablesModal = new bootstrap.Modal(document.getElementById('consumablesModal'));
+  createTasksModal = new bootstrap.Modal(document.getElementById('createTasksModal'));
+});
+
+function applyFiltersRealtime() {
+  const form = document.getElementById('filtersForm');
+  if (form) {
+    // Build URL with current filter values
+    const formData = new FormData(form);
+    const params = new URLSearchParams();
+
+    for (let [key, value] of formData.entries()) {
+      if (value) {
+        params.append(key, value);
+      }
+    }
+
+    // Add current page parameter if it exists
+    const currentUrl = new URL(window.location);
+    const currentPage = currentUrl.searchParams.get('page');
+    if (currentPage) {
+      params.set('page', currentPage);
+    }
+
+    // Navigate to new URL without page reload
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.location.href = newUrl;
+  }
+}
+
+function confirmCreateTasks() {
+  const content = document.getElementById('createTasksContent');
+  content.innerHTML = '<div class="text-center"><div class="spinner-border text-warning" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Creating tasks...</p></div>';
+  
+  document.getElementById('createTasksCloseBtn').style.display = 'none';
+  document.querySelector('#createTasksModal .btn-warning').style.display = 'none';
+
+  fetch('/api/supplies/create-tasks', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('createTasksCloseBtn').style.display = '';
+    
+    if (data.ok) {
+      let resultHtml = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> <strong>Success!</strong></div>`;
+      resultHtml += `<p>Created <strong>${data.created}</strong> task(s).</p>`;
+      resultHtml += `<p>Skipped <strong>${data.skipped}</strong> existing task(s).</p>`;
+      
+      if (data.errors && data.errors.length > 0) {
+        resultHtml += `<div class="alert alert-warning mt-2"><i class="bi bi-exclamation-triangle"></i> ${data.errors.join('<br>')}</div>`;
+      }
+      
+      content.innerHTML = resultHtml;
+      content.innerHTML += `<div class="mt-3"><button class="btn btn-primary" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i> Refresh Page</button></div>`;
+    } else {
+      content.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Error: ${data.error || 'Unknown error'}</div>`;
+      document.querySelector('#createTasksModal .btn-warning').style.display = '';
+    }
+  })
+  .catch(err => {
+    document.getElementById('createTasksCloseBtn').style.display = '';
+    document.querySelector('#createTasksModal .btn-warning').style.display = '';
+      content.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Failed to create tasks: ${err}</div>`;
+  });
+}
+
+function openConsumablesModal(printerId) {
+  consumablesModal.show();
+  window.currentPrinterId = printerId;
+
+  fetch(`/api/printer/${printerId}/consumables`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        renderConsumables(data.printer, data.items);
+      } else {
+        document.getElementById('consumablesContent').innerHTML = 
+          `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> ${data.error || 'Failed to load consumables'}</div>`;
+      }
+    })
+    .catch(err => {
+      document.getElementById('consumablesContent').innerHTML = 
+        `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Error: ${err.message}</div>`;
+    });
+}
+
+function renderConsumables(printer, items) {
+  const html = `
+    <div class="mb-3">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Store</label>
+          <input type="text" class="form-control" id="printer_store" value="${printer.store || ''}" readonly>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Printer ID</label>
+          <input type="text" class="form-control" value="${printer.id}" readonly>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Model</label>
+          <input type="text" class="form-control" value="${printer.model || ''}" readonly>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Category</label>
+      <select id="consumable_category" class="form-select" onchange="filterItemsByCategory()">
+        <option value="">All</option>
+        <option value="Maintenance">Maintenance</option>
+        <option value="Toner">Toner</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Select Item</label>
+      <select id="consumable_item" class="form-select" size="8">
+        ${items.length === 0 ? 
+          '<option disabled>No matching items found</option>' :
+          items.map(item => `
+            <option value="${item.id}" 
+                    data-category="${item.category || ''}"
+                    data-qty="${item.quantity || 0}"
+                    data-min="${item.min_quantity || 0}">
+              ${item.item_name} - Stock: ${item.quantity || 0} 
+              ${item.quantity <= (item.min_quantity || 0) ? '⚠️ LOW' : ''}
+            </option>
+          `).join('')
+        }
+      </select>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+      <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      <button class="btn btn-success" onclick="consumeSelectedItem()"><i class="bi bi-dash-circle"></i> Consume (Remove 1)</button>
+      <button class="btn btn-primary" onclick="goToSelectedItem()"><i class="bi bi-box-arrow-up-right"></i> View Item Details</button>
+    </div>
+  `;
+
+  document.getElementById('consumablesContent').innerHTML = html;
+  window.consumablesData = items;
+  window.currentPrinterStore = printer.store || '';
+  window.currentPrinterDepartment = printer.department || '';
+}
+
+function filterItemsByCategory() {
+  const category = document.getElementById('consumable_category').value;
+  const itemSelect = document.getElementById('consumable_item');
+
+  if (!window.consumablesData) return;
+
+  const filtered = category ? 
+    window.consumablesData.filter(item => item.category === category) :
+    window.consumablesData;
+
+  itemSelect.innerHTML = filtered.length === 0 ?
+    '<option disabled>No items found</option>' :
+    filtered.map(item => `
+      <option value="${item.id}" 
+              data-category="${item.category || ''}"
+              data-qty="${item.quantity || 0}"
+              data-min="${item.min_quantity || 0}">
+        ${item.item_name} - Stock: ${item.quantity || 0}
+        ${item.quantity <= (item.min_quantity || 0) ? '⚠️ LOW' : ''}
+      </option>
+    `).join('');
+}
+
+function consumeSelectedItem() {
+  const select = document.getElementById('consumable_item');
+  const itemId = select.value;
+
+  if (!itemId) {
+    alert('Please select an item');
+    return;
+  }
+
+  const selectedOption = select.options[select.selectedIndex];
+  const itemName = selectedOption.text.split(' - ')[0];
+  const currentQty = selectedOption.getAttribute('data-qty');
+
+  const printerId = window.currentPrinterId;
+  const store = window.currentPrinterStore || 'Unknown';
+  const department = window.currentPrinterDepartment || 'Unknown';
+
+  if (!confirm(`Consume 1 unit of ${itemName} from ${store} store?\nCurrent stock: ${currentQty}\nThis will reduce quantity by 1.`)) {
+    return;
+  }
+
+  fetch(`/items/adjust/${encodeURIComponent(itemId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      delta: -1,
+      store: store,
+      department: department,
+      printer_id: printerId
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      alert(`Successfully consumed 1 unit of ${itemName} from ${store}.\nNew quantity in ${store}: ${data.quantity}`);
+      bootstrap.Modal.getInstance(document.getElementById('consumablesModal')).hide();
+      location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Failed to consume item'));
+    }
+  })
+  .catch(err => alert('Error: ' + err.message));
+}
+
+function goToSelectedItem() {
+  const select = document.getElementById('consumable_item');
+  const itemId = select.value;
+
+  if (!itemId) {
+    alert('Please select an item');
+    return;
+  }
+
+// Use the correct Flask route for editing items
+  window.location.href = `{{ url_for('edit_item', item_id='__ID__') }}`.replace('__ID__', itemId);
+}
+
+
+
+</script>
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>

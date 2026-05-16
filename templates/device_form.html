@@ -1,0 +1,491 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>{{ 'Edit Device' if mode=='edit' else 'Add Device' }}</title>
+  <style>
+    body { background:#f8f9fa; padding:20px; }
+    .container { max-width: 720px; }
+    .employee-lookup {position:relative;}
+    .employee-results {position:absolute; z-index:1000; background:white; border:1px solid #ccc; border-radius:4px; max-height:200px; overflow-y:auto; width:100%; display:none; box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+    .employee-result-item {padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;}
+    .employee-result-item:hover {background-color:#f0f0f0;}
+    .employee-result-item:last-child {border-bottom:none;}
+    .employee-match {color:#666; font-size:0.85em;}
+  </style>
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3">
+      <div class="container-fluid px-3 px-lg-4">
+        <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
+          <i class="bi bi-house"></i> AssetNode
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav" aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="topNav">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('home') }}">
+                <i class="bi bi-house"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="{{ url_for('list_devices') }}">
+                <i class="bi bi-laptop"></i> Devices
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" aria-current="page" href="/printers">
+                <i class="bi bi-printer"></i> Printers
+              </a>
+            </li>
+            {% if user and user.role != 'viewer' %}
+            <li class="nav-item">
+              <a class="nav-link" href="/tasks">
+                <i class="bi bi-list-check"></i> Tasks
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('employees_list') }}">
+                <i class="bi bi-people"></i> Employees
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('items_list') }}">
+                <i class="bi bi-box-seam"></i> Inventory
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('printer_supplies') }}">
+                <i class="bi bi-droplet"></i> Levels
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('scanner_page') }}">
+                <i class="bi bi-upc-scan"></i> Scanner
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            {% if is_admin %}
+              <a class="btn btn-success btn-sm text-nowrap" href="{{ url_for('admin_printer_new') }}" title="Add a new printer">
+                <i class="bi bi-plus-lg"></i> Add Printer
+              </a>
+            {% endif %}
+            <a class="btn btn-info btn-sm text-nowrap" href="{{ url_for('report_devices') }}" title="Create report of devices">
+              <i class="bi bi-file-earmark-text"></i> Create Report
+            </a>
+            {% if user and user.role == 'admin' %}
+              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('admin_users') }}" title="Manage accounts">
+                <i class="bi bi-shield-lock"></i> Accounts
+              </a>
+              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('settings') }}" title="Settings">
+                <i class="bi bi-gear"></i>
+              </a>
+            {% endif %}
+            {% if logo %}
+              <img src="{{ logo }}" alt="Logo" style="max-height:36px; object-fit:contain; margin:0 8px;">
+            {% endif %}
+            {% if user %}
+              <span class="me-2 small text-white d-none d-lg-inline">{{ user.username }} ({{ user.role }})</span>
+              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('logout') }}">
+                <i class="bi bi-box-arrow-right"></i> Logout
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+  <div class="container">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h4 class="card-title mb-3">{{ 'Edit Device' if mode=='edit' else 'Add Device' }}</h4>
+        {% with m=get_flashed_messages() %}{% if m %}<div class="alert alert-info">{{ m[0] }}</div>{% endif %}{% endwith %}
+        <form method="post" class="row g-3">
+          <!-- Store -->
+          <div class="col-sm-6">
+            <label class="form-label">Store</label>
+            <select name="store" class="form-select" required>
+              {% for s in stores %}
+                <option value="{{ s }}" {% if (device.store or '') == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Employee Number -->
+          <div class="col-sm-6">
+            <label class="form-label">Employee # <small class="text-muted">(auto-assigns device)</small></label>
+            <div class="employee-lookup">
+              <input id="employeeNumber" name="employee_number" class="form-control" value="{{ device.employee_number or '' }}" placeholder="Search by number or name">
+              <div id="employeeResults" class="employee-results"></div>
+            </div>
+            <small class="text-muted">Current: <span id="employeeDisplay">{{ employee_display or 'None' }}</span></small>
+          </div>
+
+          <!-- Name -->
+          <div class="col-sm-6">
+            <label class="form-label">Name</label>
+            <input name="name" class="form-control" value="{{ device.name or '' }}">
+          </div>
+
+          <!-- Model -->
+          <div class="col-sm-6">
+            <label class="form-label">Model</label>
+            <input name="model" class="form-control" value="{{ device.model or '' }}">
+          </div>
+
+          <!-- Serial -->
+          <div class="col-sm-6">
+            <label class="form-label">Serial</label>
+            <input name="serial" class="form-control" value="{{ device.serial or '' }}">
+          </div>
+
+          <!-- Keyboard -->
+          <div class="col-sm-6">
+            <label class="form-label">Keyboard</label>
+            <input name="keyboard" class="form-control" value="{{ device.keyboard or '' }}">
+          </div>
+
+          <!-- Title (auto-filled from Position) -->
+          <div class="col-sm-6">
+            <label class="form-label">Title</label>
+            <input name="title" class="form-control" value="{{ device.title or '' }}">
+          </div>
+
+          <!-- Department -->
+          <div class="col-sm-6">
+            <label class="form-label">Department</label>
+            <input name="department" class="form-control" value="{{ device.department or '' }}">
+          </div>
+
+          <!-- Notes -->
+          <div class="col-12">
+            <label class="form-label">Notes</label>
+            <textarea name="notes" class="form-control" rows="3">{{ device.notes or '' }}</textarea>
+          </div>
+
+          <!-- Lifecycle Information Section -->
+          <div class="col-12 mt-4">
+            <h5 class="border-bottom pb-2">Lifecycle Information</h5>
+          </div>
+
+          <!-- Asset Type -->
+          <div class="col-md-4">
+            <label class="form-label">Asset Type</label>
+            <select name="asset_type" class="form-select">
+              <option value="">Select type...</option>
+              <option value="laptop" {% if device.asset_type == 'laptop' %}selected{% endif %}>Laptop</option>
+              <option value="desktop" {% if device.asset_type == 'desktop' %}selected{% endif %}>Desktop</option>
+              <option value="server" {% if device.asset_type == 'server' %}selected{% endif %}>Server</option>
+              <option value="mobile" {% if device.asset_type == 'mobile' %}selected{% endif %}>Mobile Device</option>
+              <option value="network equipment" {% if device.asset_type == 'network equipment' %}selected{% endif %}>Network Equipment</option>
+              <option value="tablet" {% if device.asset_type == 'tablet' %}selected{% endif %}>Tablet</option>
+              <option value="workstation" {% if device.asset_type == 'workstation' %}selected{% endif %}>Workstation</option>
+              <option value="monitor" {% if device.asset_type == 'monitor' %}selected{% endif %}>Monitor</option>
+            </select>
+          </div>
+
+          <!-- Purchase Date -->
+          <div class="col-md-4">
+            <label class="form-label">Purchase Date</label>
+            <input type="date" name="purchase_date" class="form-control" value="{{ device.purchase_date or '' }}">
+          </div>
+
+          <!-- Warranty Expiry -->
+          <div class="col-md-4">
+            <label class="form-label">Warranty Expiry</label>
+            <input type="date" name="warranty_expiry" class="form-control" value="{{ device.warranty_expiry or '' }}">
+          </div>
+
+          <!-- Usage Level -->
+          <div class="col-md-4">
+            <label class="form-label">Usage Level</label>
+            <select name="usage_level" class="form-select">
+              <option value="">Select level...</option>
+              <option value="low" {% if device.usage_level == 'low' %}selected{% endif %}>Low</option>
+              <option value="medium" {% if device.usage_level == 'medium' %}selected{% endif %}>Medium</option>
+              <option value="high" {% if device.usage_level == 'high' %}selected{% endif %}>High</option>
+            </select>
+          </div>
+
+          <!-- Location -->
+          <div class="col-md-4">
+            <label class="form-label">Location</label>
+            <input type="text" name="location" class="form-control" value="{{ device.location or '' }}" placeholder="Office, floor, etc.">
+          </div>
+
+          <!-- Original Price -->
+          <div class="col-md-4">
+            <label class="form-label">Original Price ($)</label>
+            <input type="number" name="original_price" class="form-control" value="{{ device.original_price or '' }}" step="0.01" min="0">
+          </div>
+
+          <!-- Fixed EOL Date -->
+          <div class="col-md-4">
+            <label class="form-label">Fixed EOL Date</label>
+            <input type="date" name="fixed_eol_date" class="form-control" value="{{ device.fixed_eol_date or '' }}">
+            <small class="form-text text-muted">Overrides calculated EOL when enabled below</small>
+          </div>
+
+          <!-- Use Fixed EOL -->
+          <div class="col-md-4">
+            <label class="form-label">Use Fixed EOL Date</label>
+            <select name="use_fixed_eol" class="form-select">
+              <option value="0" {% if not device.use_fixed_eol %}selected{% endif %}>Use Calculated EOL</option>
+              <option value="1" {% if device.use_fixed_eol %}selected{% endif %}>Use Fixed EOL Date</option>
+            </select>
+          </div>
+
+          <!-- Usage Metrics -->
+          <div class="col-md-6">
+            <label class="form-label">Usage Metrics</label>
+            <textarea name="usage_metrics" class="form-control" rows="2" placeholder="Hours, cycles, page counts, etc.">{{ device.usage_metrics or '' }}</textarea>
+          </div>
+
+          <!-- Performance Issues -->
+          <div class="col-md-6">
+            <label class="form-label">Performance Issues</label>
+            <textarea name="performance_issues" class="form-control" rows="2" placeholder="Slow performance, errors, warnings, etc.">{{ device.performance_issues or '' }}</textarea>
+          </div>
+
+          <!-- Buttons -->
+          <div class="col-12 d-flex justify-content-end gap-2">
+            <a class="btn btn-outline-secondary" href="{{ url_for('list_devices') }}">Back</a>
+            <button class="btn btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Employee autocomplete + auto-fill -->
+    <script>
+    (function(){
+      const empInput = document.getElementById('employeeNumber');
+      const empResults = document.getElementById('employeeResults');
+      const empDisplay = document.getElementById('employeeDisplay');
+      let searchTimeout;
+
+      if (empInput) {
+        empInput.addEventListener('input', function() {
+          clearTimeout(searchTimeout);
+          const query = this.value.trim();
+          if (!query || query.length < 2) {
+            empResults.style.display = 'none';
+            empResults.innerHTML = '';
+            return;
+          }
+
+          searchTimeout = setTimeout(function() {
+            fetch('/api/employees/search?q=' + encodeURIComponent(query))
+              .then(r => r.json())
+              .then(data => {
+                if (data.employees && data.employees.length > 0) {
+                  empResults.innerHTML = data.employees.map(e => 
+                      `<div class="employee-result-item" 
+                          data-empnum="${e.employee_number}" 
+                          data-name="${e.first_name} ${e.last_name}" 
+                          data-position="${e.position || ''}" 
+                          data-department="${e.department || ''}"
+                          data-store="${e.store || ''}">
+                        <div><strong>${e.first_name} ${e.last_name}</strong></div>
+                        <div class="employee-match">Emp #: ${e.employee_number || 'N/A'} | ${e.department || 'No dept'} | Store: ${e.store || 'N/A'}</div>
+                    </div>`).join('');
+                  empResults.style.display = 'block';
+                } else {
+                  empResults.innerHTML = '<div class="employee-result-item">No employees found</div>';
+                  empResults.style.display = 'block';
+                }
+              })
+              .catch(err => { console.error('Employee search failed:', err); empResults.style.display = 'none'; });
+          }, 300);
+        });
+
+        empResults.addEventListener('click', function(e) {
+          const item = e.target.closest('.employee-result-item');
+          if (item && item.dataset.empnum) {
+            const fullName = item.dataset.name;
+            const empNum = item.dataset.empnum;
+            const position = item.dataset.position || '';
+            const dept = item.dataset.department || '';
+            const store = item.dataset.store || '';
+
+            // Fill main form fields
+            empInput.value = empNum;
+            empDisplay.textContent = fullName;
+            document.querySelector('input[name="name"]').value = fullName;
+            document.querySelector('input[name="title"]').value = position;
+            document.querySelector('input[name="department"]').value = dept;
+
+            // Auto-fill store dropdown (user can override)
+            const storeSelect = document.querySelector('select[name="store"]');
+            if(storeSelect && store) {
+              storeSelect.value = store;
+              // Visual feedback that store was auto-filled
+              storeSelect.style.backgroundColor = '#fff3cd';
+              setTimeout(() => {
+                storeSelect.style.backgroundColor = '';
+              }, 1500);
+            }
+
+            // Sync to Deliver/Return forms if present
+            const fieldNames = ['store','name','model','serial','keyboard','title','department','notes'];
+            fieldNames.forEach(n => {
+              const v = document.querySelector(`[name="${n}"]`)?.value || '';
+              const del = document.getElementById('deliver_' + n);
+              const ret = document.getElementById('return_' + n);
+              if (del) del.value = v;
+              if (ret) ret.value = v;
+            });
+
+            empResults.style.display = 'none';
+          }
+        });
+
+        document.addEventListener('click', function(e) {
+          if (!empInput.contains(e.target) && !empResults.contains(e.target)) {
+            empResults.style.display = 'none';
+          }
+        });
+      }
+    })();
+    </script>
+
+
+    <!-- Deliver / Return Actions -->
+    {% if mode=='edit' %}
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Quick Actions</h5>
+        <div class="d-flex gap-2 flex-wrap">
+          <!-- Primary Actions -->
+          <form method="post" action="{{ url_for('admin_device_deliver', device_id=device.id) }}" class="d-inline">
+            {% for n in ['recipient','store','name','model','serial','keyboard','title','department','notes'] %}
+            <input type="hidden" name="{{ n }}" id="deliver_{{ n }}">
+            {% endfor %}
+            <button class="btn btn-success" type="submit">
+              <i class="bi bi-box-arrow-right"></i> Deliver
+            </button>
+          </form>
+
+          <form method="post" action="{{ url_for('admin_device_return', device_id=device.id) }}" class="d-inline">
+            {% for n in ['recipient','store','name','model','serial','keyboard','title','department','notes'] %}
+            <input type="hidden" name="{{ n }}" id="return_{{ n }}">
+            {% endfor %}
+            <button class="btn btn-warning" type="submit">
+              <i class="bi bi-arrow-return-left"></i> Return
+            </button>
+          </form>
+
+          <!-- Dropdown Menu for Other Actions -->
+          <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="actionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              More Actions
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="actionsDropdown">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('admin_device_images', device_id=device.id) }}">
+                  <i class="bi bi-images"></i> Images
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('admin_device_qr', device_id=device.id) }}" target="_blank">
+                  <i class="bi bi-qr-code"></i> QR Code
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('admin_device_contract', device_id=device.id) }}" target="_blank">
+                  <i class="bi bi-file-text"></i> Print Contract
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item text-success" href="{{ url_for('esign.esign_review', device_id=device.id) }}">
+                  <i class="bi bi-pen"></i> E-Sign Contract
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('admin_device_logs', device_id=device.id) }}">
+                  <i class="bi bi-clock-history"></i> View Logs
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('admin_device_maintenance', device_id=device.id) }}">
+                  <i class="bi bi-wrench"></i> Maintenance
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); if(confirm('Delete device {{ device.id }}? This cannot be undone.')) { document.getElementById('deleteForm').submit(); }">
+                  <i class="bi bi-trash"></i> Delete Device
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Hidden delete form -->
+          <form id="deleteForm" method="post" action="{{ url_for('admin_device_delete', device_id=device.id) }}" class="d-none">
+          </form>
+        </div>
+        <div class="form-text mt-3">
+          <i class="bi bi-info-circle"></i> Deliver and Return actions will be logged. Return sets the device name to "Returned".
+        </div>
+      </div>
+    </div>
+
+    <!-- Optional: Add Bootstrap Icons if not already included -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <!-- Bootstrap JS for dropdown functionality -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% endif %}
+  </div>
+  <script>
+document.addEventListener("DOMContentLoaded", function () {
+    function syncHiddenFields() {
+        const fields = ["store","name","model","serial","keyboard","title","department","notes"];
+        fields.forEach(name => {
+            const src = document.querySelector(`[name="${name}"]`);
+            if (!src) return;
+
+            const deliver = document.getElementById("deliver_" + name);
+            const ret = document.getElementById("return_" + name);
+
+            if (deliver) deliver.value = src.value;
+            if (ret) ret.value = src.value;
+        });
+    }
+
+    // sync on load
+    syncHiddenFields();
+
+    // sync any time fields change
+    document.querySelectorAll("input, textarea, select").forEach(el => {
+        el.addEventListener("input", syncHiddenFields);
+        el.addEventListener("change", syncHiddenFields);
+    });
+});
+</script>
+<script>
+// Add tooltips to truncated table cells on hover
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.table td, .table th').forEach(function(cell) {
+    if (cell.scrollWidth > cell.clientWidth) {
+      cell.title = cell.textContent.trim();
+      cell.style.cursor = 'help';
+    }
+  });
+});
+</script>
+
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>

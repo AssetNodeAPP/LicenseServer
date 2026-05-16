@@ -1,0 +1,23 @@
+{% for d in devices %}
+<tr>
+  {% if is_admin %}<td><input type="checkbox" class="device-checkbox" value="{{ d.id }}"></td>{% endif %}
+  <td><span class="status-dot status-{{ d.status_color }}"></span></td>
+  <td><a href="{{ url_for('get_device', device_id=d.id) }}" class="text-decoration-none">{{ d.id }}</a></td>
+  <td>{{ d.name or '' }}</td>
+  <td>{{ d.model or '' }}</td>
+  <td>{{ d.serial or '' }}</td>
+  <td>{{ d.department or '' }}</td>
+  <td><span class="badge text-bg-primary badge-store">{{ d.store or '' }}</span></td>
+  <td class="text-end">
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('get_device', device_id=d.id) }}" title="Open card">Open</a>
+    {% if user %}
+      <a class="btn btn-sm btn-primary" href="{{ url_for('admin_device_images', device_id=d.id) }}" title="Images">
+        Images
+      </a>
+    {% endif %}
+    {% if is_admin %}
+      <a class="btn btn-sm btn-warning" href="{{ url_for('admin_device_edit', device_id=d.id) }}" title="Edit">Edit</a>
+    {% endif %}
+  </td>
+</tr>
+{% endfor %}

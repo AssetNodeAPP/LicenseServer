@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Audit Logs - AssetNode</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background: #f8f9fa; padding: 20px; }
+        .container { max-width: 1400px; }
+        .log-card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .log-header { padding: 12px 15px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+        .log-body { padding: 15px; }
+        .badge-action { font-size: 0.85rem; padding: 5px 10px; }
+        .badge-create { background-color: #28a745; }
+        .badge-update { background-color: #0d6efd; }
+        .badge-delete { background-color: #dc3545; }
+        .badge-login { background-color: #6c757d; }
+        .badge-logout { background-color: #17a2b8; }
+        .badge-lock { background-color: #ffc107; color: #000; }
+        .badge-unlock { background-color: #20c997; }
+        .badge-fail { background-color: #dc3545; }
+        .resource-link { color: #0d6efd; text-decoration: none; }
+        .resource-link:hover { text-decoration: underline; }
+        .filter-panel { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .log-details { font-size: 0.9rem; color: #6c757d; }
+        .json-preview { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.85rem; max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    </style>
+</head>
+<body>
+    {% if user and user.role == 'admin' %}
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-journal-text"></i> Audit Logs</h2>
+            <div>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Admin
+                </a>
+                <a href="{{ url_for('export_audit_logs') }}?{% if action_filter %}action={{ action_filter }}&{% endif %}{% if user_filter %}username={{ user_filter }}&{% endif %}{% if resource_filter %}resource={{ resource_filter }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}" class="btn btn-success">
+                    <i class="bi bi-download"></i> Export CSV
+                </a>
+            </div>
+        </div>
+
+        <div class="filter-panel">
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Action</label>
+                    <select name="action" class="form-select">
+                        <option value="">All Actions</option>
+                        {% for action in actions %}
+                        <option value="{{ action }}" {% if action_filter == action %}selected{% endif %}>{{ action }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Username</label>
+                    <select name="username" class="form-select">
+                        <option value="">All Users</option>
+                        {% for username in usernames %}
+                        <option value="{{ username }}" {% if user_filter == username %}selected{% endif %}>{{ username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Resource Type</label>
+                    <select name="resource" class="form-select">
+                        <option value="">All Resources</option>
+                        {% for rt in resource_types %}
+                        <option value="{{ rt }}" {% if resource_filter == rt %}selected{% endif %}>{{ rt }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date From</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date To</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Search</label>
+                    <input type="text" name="search" class="form-control" placeholder="Search details..." value="{{ search_filter }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Filter</button>
+                    <a href="{{ url_for('audit_logs') }}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="mb-3 text-muted">
+            Showing {{ logs|length }} of {{ total }} total records
+        </div>
+
+        {% for log in logs %}
+        <div class="log-card">
+            <div class="log-header">
+                <div>
+                    {% if log.action in ['CREATE'] %}
+                    <span class="badge badge-action badge-create">{{ log.action }}</span>
+                    {% elif log.action in ['UPDATE'] %}
+                    <span class="badge badge-action badge-update">{{ log.action }}</span>
+                    {% elif log.action in ['DELETE'] %}
+                    <span class="badge badge-action badge-delete">{{ log.action }}</span>
+                    {% elif log.action in ['LOGIN'] %}
+                    <span class="badge badge-action badge-login">{{ log.action }}</span>
+                    {% elif log.action in ['LOGOUT'] %}
+                    <span class="badge badge-action badge-logout">{{ log.action }}</span>
+                    {% elif log.action in ['LOCK'] %}
+                    <span class="badge badge-action badge-lock">{{ log.action }}</span>
+                    {% elif log.action in ['UNLOCK'] %}
+                    <span class="badge badge-action badge-unlock">{{ log.action }}</span>
+                    {% elif 'FAIL' in log.action %}
+                    <span class="badge badge-action badge-fail">{{ log.action }}</span>
+                    {% else %}
+                    <span class="badge badge-action bg-secondary">{{ log.action }}</span>
+                    {% endif %}
+                    <span class="ms-2 fw-bold">{{ log.resource_type|title }}</span>
+                    {% if log.resource_name %}
+                    <span class="ms-1 text-muted">- {{ log.resource_name }}</span>
+                    {% endif %}
+                </div>
+                <div class="text-end">
+                    <div class="text-muted" style="font-size: 0.85rem;">
+                        <i class="bi bi-person"></i> {{ log.username }} &nbsp;
+                        <i class="bi bi-clock"></i> {{ log.timestamp }}
+                    </div>
+                    {% if log.ip_address %}
+                    <div class="text-muted" style="font-size: 0.8rem;">
+                        <i class="bi bi-globe"></i> {{ log.ip_address }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="log-body">
+                {% if log.details %}
+                <p class="mb-2"><strong>Details:</strong> {{ log.details }}</p>
+                {% endif %}
+                
+                {% if log.old_value or log.new_value %}
+                <div class="row">
+                    {% if log.old_value %}
+                    <div class="col-md-6">
+                        <strong>Old Value:</strong>
+                        <div class="json-preview">{{ log.old_value[:500] }}{% if log.old_value|length > 500 %}...{% endif %}</div>
+                    </div>
+                    {% endif %}
+                    {% if log.new_value %}
+                    <div class="col-md-6">
+                        <strong>New Value:</strong>
+                        <div class="json-preview">{{ log.new_value[:500] }}{% if log.new_value|length > 500 %}...{% endif %}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">No audit logs found matching your criteria.</div>
+        {% endfor %}
+
+        {% if pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                    <a class="page-link" href="?page=1&per_page={{ per_page }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&username={{ user_filter }}{% endif %}{% if resource_filter %}&resource={{ resource_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_filter %}&search={{ search_filter }}{% endif %}">First</a>
+                </li>
+                {% for p in page_numbers %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    <a class="page-link" href="?page={{ p }}&per_page={{ per_page }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&username={{ user_filter }}{% endif %}{% if resource_filter %}&resource={{ resource_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_filter %}&search={{ search_filter }}{% endif %}">{{ p }}</a>
+                </li>
+                {% endfor %}
+                <li class="page-item {% if page >= pages %}disabled{% endif %}">
+                    <a class="page-link" href="?page={{ pages }}&per_page={{ per_page }}{% if action_filter %}&action={{ action_filter }}{% endif %}{% if user_filter %}&username={{ user_filter }}{% endif %}{% if resource_filter %}&resource={{ resource_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_filter %}&search={{ search_filter }}{% endif %}">Last</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="container mt-5">
+        <div class="alert alert-danger">Access denied. Admin privileges required.</div>
+    </div>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>

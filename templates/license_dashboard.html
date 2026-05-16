@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <title>License Generator - AssetNode</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container-main {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .page-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+        
+        .warning-banner {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .warning-banner i {
+            color: #dc2626;
+            margin-right: 10px;
+        }
+        
+        .warning-banner span {
+            color: #991b1b;
+            font-weight: 500;
+        }
+        
+        .smtp-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .smtp-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        .nav-tabs {
+            border: none;
+            gap: 10px;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+            color: #64748b;
+            background: rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .form-control, .form-select {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .form-text {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: #10b981;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn-outline-secondary {
+            border-radius: 12px;
+            padding: 10px 20px;
+        }
+        
+        .output-box {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .output-box .success {
+            color: #86efac;
+        }
+        
+        .output-box .error {
+            color: #fca5a5;
+        }
+        
+        .output-box .info {
+            color: #93c5fd;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table thead th {
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+            color: #374151;
+            padding: 14px 16px;
+            white-space: nowrap;
+        }
+        
+        .table tbody td {
+            padding: 14px 16px;
+            vertical-align: middle;
+        }
+        
+        .table tbody tr:hover {
+            background: #f8fafc;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+        }
+        
+        .status-expired {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+        
+        .status-expiring {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+        
+        .status-perpetual {
+            background: rgba(139, 92, 246, 0.1);
+            color: #7c3aed;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-card .label {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .search-box {
+            position: relative;
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+        
+        .search-box input {
+            padding-left: 45px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        
+        .btn-copy {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+        
+        .btn-copy:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
+        .modal-header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: 0.15em;
+        }
+        
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #667eea;
+        }
+        
+        .bg-purple {
+            background-color: #8b5cf6 !important;
+            color: white;
+        }
+        
+        .modal-xl-custom {
+            max-width: 1400px;
+        }
+        
+        #logsTable td, #logsTable th {
+            vertical-align: middle;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-main">
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1><i class="bi bi-shield-lock"></i> License Generator</h1>
+                    <p class="text-muted mb-0">Software Provider Administration Tool</p>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    {% if current_user and current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin_users') }}" class="smtp-btn" style="text-decoration: none;">
+                        <i class="bi bi-people"></i> Users
+                    </a>
+                    {% endif %}
+                    {% if current_user %}
+                    <span class="text-muted"><i class="bi bi-person"></i> {{ current_user.username }}</span>
+                    <a href="{{ url_for('logout') }}" class="smtp-btn" style="text-decoration: none;">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </a>
+                    {% endif %}
+                    <button class="smtp-btn" data-bs-toggle="modal" data-bs-target="#smtpModal">
+                        <i class="bi bi-gear"></i> SMTP Settings
+                    </button>
+                </div>
+            </div>
+            <div class="warning-banner">
+                <span><i class="bi bi-exclamation-triangle"></i> CONFIDENTIAL: For software provider use only. Do not distribute to customers.</span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="licenseTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="licenses-tab" data-bs-toggle="tab" data-bs-target="#licenses" type="button" role="tab">
+                            <i class="bi bi-key"></i> License Keys
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="renewals-tab" data-bs-toggle="tab" data-bs-target="#renewals" type="button" role="tab">
+                            <i class="bi bi-arrow-repeat"></i> Renewals
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
+                            <i class="bi bi-journal-text"></i> Audit Logs
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="stripe-tab" data-bs-toggle="tab" data-bs-target="#stripe" type="button" role="tab">
+                            <i class="bi bi-credit-card"></i> Stripe
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content mt-4" id="licenseTabsContent">
+                    <!-- License Keys Tab (Unified) -->
+                    <div class="tab-pane fade show active" id="licenses" role="tabpanel">
+                        <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                            <div class="stat-card">
+                                <div class="number" id="statCustomers">0</div>
+                                <div class="label">Total Customers</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="number" id="statActiveCustomers">0</div>
+                                <div class="label">Active</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="number" id="statLicenses">0</div>
+                                <div class="label">Total Licenses</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="number" id="statAutoRenew">0</div>
+                                <div class="label">Auto-Renewal</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-3 mb-4">
+                            <div class="search-box flex-grow-1">
+                                <i class="bi bi-search"></i>
+                                <input type="text" class="form-control" id="customerSearch" placeholder="Search by customer number, name, or email...">
+                            </div>
+                            <select class="form-select" id="customerStatusFilter" style="width: 150px;">
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspended</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="showAddCustomerModal()">
+                                <i class="bi bi-plus-circle"></i> Add Customer
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="refreshCustomers()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="table" id="customersTable">
+                                <thead>
+                                    <tr>
+                                        <th>Customer Number</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Licenses</th>
+                                        <th>Status</th>
+                                        <th>Auto-Renewal</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customersBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">Loading customers...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Renewals Tab -->
+                    <div class="tab-pane fade" id="renewals" role="tabpanel">
+                        <div class="d-flex gap-3 mb-4">
+                            <button class="btn btn-outline-secondary" onclick="refreshRenewals()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="table" id="renewalsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Customer</th>
+                                        <th>Customer #</th>
+                                        <th>License Key</th>
+                                        <th>Previous Expiry</th>
+                                        <th>New Expiry</th>
+                                        <th>Days Added</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="renewalsBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">Loading renewals...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Audit Logs Tab -->
+                    <div class="tab-pane fade" id="logs" role="tabpanel">
+                        <div class="d-flex gap-3 mb-4">
+                            <div class="search-box flex-grow-1">
+                                <i class="bi bi-search"></i>
+                                <input type="text" class="form-control" id="logSearch" placeholder="Search by name, details, or user...">
+                            </div>
+                            <select class="form-select" id="logActionFilter" style="width: 160px;">
+                                <option value="all">All Actions</option>
+                                <option value="CREATE">Create</option>
+                                <option value="UPDATE">Update</option>
+                                <option value="DELETE">Delete</option>
+                                <option value="SUSPEND">Suspend</option>
+                                <option value="CANCEL">Cancel</option>
+                                <option value="REACTIVATE">Reactivate</option>
+                                <option value="RENEW">Renew</option>
+                                <option value="EXTEND">Extend</option>
+                                <option value="TOGGLE_AUTO_RENEW">Toggle Auto-Renew</option>
+                                <option value="EMAIL_SENT">Email Sent</option>
+                            </select>
+                            <select class="form-select" id="logEntityFilter" style="width: 140px;">
+                                <option value="all">All Types</option>
+                                <option value="customer">Customer</option>
+                                <option value="license">License</option>
+                                <option value="settings">Settings</option>
+                            </select>
+                            <button class="btn btn-outline-secondary" onclick="refreshLogs()">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table class="table" id="logsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:16%">Timestamp</th>
+                                        <th style="width:12%">Action</th>
+                                        <th style="width:10%">Type</th>
+                                        <th style="width:14%">Entity</th>
+                                        <th style="width:33%">Details</th>
+                                        <th style="width:15%">User</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logsBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">Loading logs...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Stripe Settings Tab -->
+                    <div class="tab-pane fade" id="stripe" role="tabpanel">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="bi bi-credit-card"></i> Stripe Configuration</h5>
+                                        <div class="mb-3">
+                                            <label class="form-label">Stripe API Key</label>
+                                            <input type="password" class="form-control" id="stripeApiKey" placeholder="sk_live_...">
+                                            <div class="form-text">Your Stripe secret API key</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Webhook Secret</label>
+                                            <input type="password" class="form-control" id="stripeWebhookSecret" placeholder="whsec_...">
+                                            <div class="form-text">Stripe webhook signing secret</div>
+                                        </div>
+                                        <div class="d-flex gap-3">
+                                            <button class="btn btn-primary flex-grow-1" onclick="saveStripeSettings()">
+                                                <i class="bi bi-check-lg"></i> Save Settings
+                                            </button>
+                                        </div>
+                                        <div id="stripeSaveStatus" class="mt-3"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mt-3">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="bi bi-link"></i> Webhook URL</h5>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="webhookUrl" readonly value="">
+                                            <button class="btn btn-outline-secondary" onclick="copyWebhookUrl()">
+                                                <i class="bi bi-clipboard"></i> Copy
+                                            </button>
+                                        </div>
+                                        <div class="form-text mt-2">
+                                            <i class="bi bi-info-circle"></i> Add this URL to your Stripe webhook endpoints for: 
+                                            <code>customer.subscription.updated</code>, 
+                                            <code>customer.subscription.deleted</code>,
+                                            <code>invoice.payment_succeeded</code>,
+                                            <code>invoice.payment_failed</code>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><i class="bi bi-question-circle"></i> Stripe Integration Help</h5>
+                                        <p class="text-muted">To enable Stripe auto-renewal:</p>
+                                        <ol class="text-muted">
+                                            <li>Go to <a href="https://dashboard.stripe.com/webhooks" target="_blank">Stripe Webhooks</a></li>
+                                            <li>Add a new webhook endpoint</li>
+                                            <li>Set URL to: <code id="webhookUrlHelp">https://your-domain.com/api/stripe/webhook</code></li>
+                                            <li>Select events: <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.payment_succeeded</code>, <code>invoice.payment_failed</code></li>
+                                            <li>Copy the signing secret and paste above</li>
+                                        </ol>
+                                        <hr>
+                                        <p class="text-muted small">When a subscription is updated, renewed, or cancelled in Stripe, the license status will be automatically synchronized. Auto-renewal licenses will create Stripe checkout sessions for payment.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Customer Modal -->
+    <div class="modal fade" id="addCustomerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus"></i> Add New Customer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Customer/Company Name *</label>
+                        <input type="text" class="form-control" id="newCustomerName" placeholder="Enter customer name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="newCustomerEmail" placeholder="customer@example.com">
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> A unique 10-digit customer number will be auto-generated.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createCustomer()">
+                        <i class="bi bi-check-lg"></i> Create Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Customer Detail Modal -->
+    <div class="modal fade" id="customerDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-xl-custom">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person"></i> Customer Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="customerDetailContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Loading customer details...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Generate License Modal -->
+    <div class="modal fade" id="generateLicenseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-key"></i> Generate License</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Customer</label>
+                        <select class="form-select" id="licenseCustomerSelect">
+                            <option value="">Select customer...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">MAC Address (Optional)</label>
+                        <input type="text" class="form-control" id="licenseMacAddress" placeholder="AA:BB:CC:DD:EE:FF">
+                        <div class="form-text">Leave empty to allow any MAC</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Validity (Days)</label>
+                        <input type="number" class="form-control" id="licenseDays" value="365" min="1" max="36500">
+                    </div>
+                    <div class="mb-3 checkbox-wrapper">
+                        <input type="checkbox" id="licenseBindMac" checked>
+                        <label for="licenseBindMac" class="mb-0">Bind license to MAC address</label>
+                    </div>
+                    <hr>
+                    <h6><i class="bi bi-arrow-repeat"></i> Auto-Renewal (Stripe)</h6>
+                    <div class="mb-3 checkbox-wrapper">
+                        <input type="checkbox" id="licenseAutoRenew">
+                        <label for="licenseAutoRenew" class="mb-0">Enable auto-renewal via Stripe</label>
+                    </div>
+                    <div class="mb-3" id="renewalIntervalGroup" style="display: none;">
+                        <label class="form-label">Renewal Interval</label>
+                        <select class="form-select" id="licenseRenewalInterval">
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly" selected>Yearly</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="stripePriceGroup" style="display: none;">
+                        <label class="form-label">Stripe Price ID (Optional)</label>
+                        <input type="text" class="form-control" id="licenseStripePrice" placeholder="price_xxxxx">
+                        <div class="form-text">Leave empty to create a new price automatically</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="generateOnlineLicense()">
+                        <i class="bi bi-check-lg"></i> Generate License
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- License Key Modal -->
+    <div class="modal fade" id="licenseKeyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-key"></i> License Key Generated</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> License generated successfully!
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Customer Number (for client activation)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="displayCustomerNumber" readonly>
+                            <button class="btn btn-outline-secondary" onclick="copyToClipboard(document.getElementById('displayCustomerNumber').value, 'Customer Number')">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">License Key</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="displayLicenseKey" readonly>
+                            <button class="btn btn-outline-secondary" onclick="copyToClipboard(document.getElementById('displayLicenseKey').value, 'License Key')">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Expiry Date</label>
+                        <input type="text" class="form-control" id="displayExpiryDate" readonly>
+                    </div>
+                    <div class="mb-3" id="autoRenewDisplay" style="display: none;">
+                        <label class="form-label">Auto-Renewal</label>
+                        <input type="text" class="form-control" id="displayAutoRenew" readonly>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Share the customer number and license key with your customer. They will need both to activate their installation.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Send License Modal -->
+    <div class="modal fade" id="sendLicenseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-envelope"></i> Send License Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Customer</label>
+                        <input type="text" class="form-control" id="sendLicCustomerName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="sendLicEmail" placeholder="customer@example.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Custom Message (Optional)</label>
+                        <textarea class="form-control" id="sendLicMessage" rows="3" placeholder="Add a personal note to include in the email..."></textarea>
+                        <div class="form-text">This will be included in the email above the support info.</div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> The email will include the customer number, license key, expiry date, MAC address, and auto-renewal status.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="sendLicBtn" onclick="sendLicenseEmail()">
+                        <i class="bi bi-send"></i> <span id="sendLicBtnText">Send Email</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Renew License Modal -->
+    <div class="modal fade" id="renewLicenseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-arrow-repeat"></i> Renew License</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Customer</label>
+                        <input type="text" class="form-control" id="renewCustomerName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Current Expiry</label>
+                        <input type="text" class="form-control" id="renewCurrentExpiry" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Additional Days</label>
+                        <input type="number" class="form-control" id="renewDays" value="365" min="1" max="36500">
+                    </div>
+                    <hr>
+                    <h6>Renewal Type</h6>
+                    <div class="btn-group w-100 mb-3" role="group">
+                        <input type="radio" class="btn-check" name="renewType" id="renewTypeManual" value="manual" checked>
+                        <label class="btn btn-outline-primary" for="renewTypeManual">
+                            <i class="bi bi-calendar-check"></i> Manual Renew
+                        </label>
+                        <input type="radio" class="btn-check" name="renewType" id="renewTypeStripe" value="stripe">
+                        <label class="btn btn-outline-primary" for="renewTypeStripe">
+                            <i class="bi bi-credit-card"></i> Stripe Auto-Renewal
+                        </label>
+                    </div>
+                    <div id="manualRenewInfo" class="alert alert-success">
+                        <i class="bi bi-check-circle"></i> License will be extended immediately by the specified number of days.
+                    </div>
+                    <div id="stripeRenewOptions" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Billing Interval</label>
+                            <select class="form-select" id="renewInterval">
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="yearly" selected>Yearly</option>
+                            </select>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> A Stripe checkout session will be created. The customer will be redirected to complete payment for recurring auto-renewal.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="renewLicense()">
+                        <i class="bi bi-check-lg"></i> <span id="renewBtnText">Renew License</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SMTP Settings Modal -->
+    <div class="modal fade" id="smtpModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-gear"></i> SMTP Configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">SMTP Server</label>
+                        <input type="text" class="form-control" id="smtpServer" value="smtp.gmail.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SMTP Port</label>
+                        <input type="number" class="form-control" id="smtpPort" value="587">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sender Email</label>
+                        <input type="email" class="form-control" id="smtpEmail" placeholder="your-email@gmail.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Password / App Password</label>
+                        <input type="password" class="form-control" id="smtpPassword" placeholder="Enter app password">
+                    </div>
+                    <div class="mb-3 checkbox-wrapper">
+                        <input type="checkbox" id="smtpTls" checked>
+                        <label for="smtpTls" class="mb-0">Use TLS/STARTTLS</label>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> For Gmail: Enable 2-factor authentication and create an App Password.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="testSmtp()">
+                        <i class="bi bi-check-circle"></i> Test Connection
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveSmtp()">
+                        <i class="bi bi-check-lg"></i> Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentLicenseData = null;
+        let currentRenewalLicenseId = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSmtpSettings();
+            refreshCustomers();
+            loadStripeSettings();
+            
+            document.getElementById('webhookUrl').value = window.location.origin + '/api/stripe/webhook';
+            document.getElementById('webhookUrlHelp').textContent = window.location.origin + '/api/stripe/webhook';
+            
+            document.getElementById('customerSearch').addEventListener('input', debounce(refreshCustomers, 300));
+            document.getElementById('customerStatusFilter').addEventListener('change', refreshCustomers);
+            
+            document.getElementById('licenseAutoRenew').addEventListener('change', function() {
+                var show = this.checked;
+                document.getElementById('renewalIntervalGroup').style.display = show ? 'block' : 'none';
+                document.getElementById('stripePriceGroup').style.display = show ? 'block' : 'none';
+            });
+            
+            document.querySelectorAll('input[name="renewType"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    var isStripe = this.value === 'stripe';
+                    document.getElementById('stripeRenewOptions').style.display = isStripe ? 'block' : 'none';
+                    document.getElementById('manualRenewInfo').style.display = isStripe ? 'none' : 'block';
+                    document.getElementById('renewBtnText').textContent = isStripe ? 'Renew & Setup Stripe' : 'Renew License';
+                });
+            });
+            
+            document.getElementById('logSearch')?.addEventListener('input', debounce(refreshLogs, 400));
+            document.getElementById('logActionFilter')?.addEventListener('change', refreshLogs);
+            document.getElementById('logEntityFilter')?.addEventListener('change', refreshLogs);
+        });
+        
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        async function loadSmtpSettings() {
+            try {
+                const response = await fetch('/api/settings/smtp');
+                const data = await response.json();
+                if (data.smtp_server) {
+                    document.getElementById('smtpServer').value = data.smtp_server;
+                    document.getElementById('smtpPort').value = data.smtp_port;
+                    document.getElementById('smtpEmail').value = data.sender_email;
+                    document.getElementById('smtpTls').checked = data.use_tls;
+                }
+            } catch (e) {
+                console.error('Error loading SMTP settings:', e);
+            }
+        }
+        
+        async function saveSmtp() {
+            const settings = {
+                smtp_server: document.getElementById('smtpServer').value,
+                smtp_port: parseInt(document.getElementById('smtpPort').value),
+                sender_email: document.getElementById('smtpEmail').value,
+                password: document.getElementById('smtpPassword').value,
+                use_tls: document.getElementById('smtpTls').checked
+            };
+            
+            if (!settings.smtp_server || !settings.smtp_port || !settings.sender_email || !settings.password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/settings/smtp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(settings)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('SMTP settings saved successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('smtpModal')).hide();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error saving settings: ' + e.message);
+            }
+        }
+        
+        async function testSmtp() {
+            const settings = {
+                smtp_server: document.getElementById('smtpServer').value,
+                smtp_port: parseInt(document.getElementById('smtpPort').value),
+                sender_email: document.getElementById('smtpEmail').value,
+                password: document.getElementById('smtpPassword').value,
+                use_tls: document.getElementById('smtpTls').checked
+            };
+            
+            if (!settings.smtp_server || !settings.smtp_port || !settings.sender_email || !settings.password) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/settings/smtp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(settings)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Connection successful!');
+                } else {
+                    alert('Connection failed: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error testing connection: ' + e.message);
+            }
+        }
+        
+        function copyToClipboard(text, name) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert((name || 'Text') + ' copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy');
+            });
+        }
+        
+        function copyWebhookUrl() {
+            const url = document.getElementById('webhookUrl').value;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Webhook URL copied!');
+            });
+        }
+        
+        async function loadStripeSettings() {
+            try {
+                const response = await fetch('/api/settings/stripe');
+                const data = await response.json();
+                if (data.stripe_api_key) {
+                    document.getElementById('stripeApiKey').value = data.stripe_api_key;
+                }
+                if (data.stripe_webhook_secret) {
+                    document.getElementById('stripeWebhookSecret').value = data.stripe_webhook_secret;
+                }
+            } catch (e) {
+                console.error('Error loading Stripe settings:', e);
+            }
+        }
+        
+        async function saveStripeSettings() {
+            const apiKey = document.getElementById('stripeApiKey').value;
+            const webhookSecret = document.getElementById('stripeWebhookSecret').value;
+            
+            try {
+                const response = await fetch('/api/settings/stripe', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        stripe_api_key: apiKey,
+                        stripe_webhook_secret: webhookSecret
+                    })
+                });
+                const result = await response.json();
+                
+                const statusEl = document.getElementById('stripeSaveStatus');
+                if (result.success) {
+                    statusEl.innerHTML = '<div class="alert alert-success py-2"><i class="bi bi-check-circle"></i> Settings saved!</div>';
+                } else {
+                    statusEl.innerHTML = '<div class="alert alert-danger py-2"><i class="bi bi-x-circle"></i> ' + result.error + '</div>';
+                }
+                
+                setTimeout(() => statusEl.innerHTML = '', 3000);
+            } catch (e) {
+                document.getElementById('stripeSaveStatus').innerHTML = '<div class="alert alert-danger py-2"><i class="bi bi-x-circle"></i> ' + e.message + '</div>';
+            }
+        }
+        
+        async function refreshCustomers() {
+            const search = document.getElementById('customerSearch').value;
+            const status = document.getElementById('customerStatusFilter').value;
+            
+            try {
+                const response = await fetch(`/api/customers?search=${encodeURIComponent(search)}&status=${status}`);
+                const data = await response.json();
+                
+                var totalLicenses = 0;
+                var totalAutoRenew = 0;
+                
+                document.getElementById('statCustomers').textContent = data.customers ? data.customers.length : 0;
+                document.getElementById('statActiveCustomers').textContent = data.customers ? data.customers.filter(c => c.status === 'active').length : 0;
+                
+                const tbody = document.getElementById('customersBody');
+                tbody.innerHTML = '';
+                
+                if (!data.customers || data.customers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No customers found</td></tr>';
+                    return;
+                }
+                
+                data.customers.forEach(customer => {
+                    totalLicenses += (customer.license_count || 0);
+                    var autoRenewCount = (customer.licenses || []).filter(l => l.auto_renew).length;
+                    totalAutoRenew += autoRenewCount;
+                    
+                    let statusClass = 'status-active';
+                    if (customer.status === 'suspended') statusClass = 'status-expired';
+                    else if (customer.status === 'cancelled') statusClass = 'status-expiring';
+                    
+                    var autoRenewBadge = '';
+                    if (autoRenewCount > 0) {
+                        autoRenewBadge = '<span class="badge bg-success me-1">' + autoRenewCount + ' active</span>';
+                    }
+                    
+                    const row = `
+                        <tr>
+                            <td><code>${customer.customer_number}</code></td>
+                            <td>${customer.name}</td>
+                            <td>${customer.email || 'N/A'}</td>
+                            <td>${customer.license_count || 0}</td>
+                            <td><span class="status-badge ${statusClass}">${customer.status}</span></td>
+                            <td>${autoRenewBadge || '<span class="text-muted">-</span>'}</td>
+                            <td>${customer.created_at}</td>
+                            <td class="action-buttons">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                        <i class="bi bi-gear"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="viewCustomer(${customer.id})">
+                                            <i class="bi bi-eye me-2"></i>View Details
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="generateLicenseForCustomer(${customer.id})">
+                                            <i class="bi bi-key me-2"></i>Generate License
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        ${customer.status === 'active' ? `
+                                        <li><a class="dropdown-item" href="#" onclick="suspendCustomer(${customer.id})">
+                                            <i class="bi bi-pause me-2"></i>Suspend
+                                        </a></li>
+                                        ` : ''}
+                                        ${customer.status !== 'cancelled' ? `
+                                        <li><a class="dropdown-item" href="#" onclick="cancelCustomer(${customer.id})">
+                                            <i class="bi bi-x-circle me-2"></i>Cancel
+                                        </a></li>
+                                        ` : ''}
+                                        ${customer.status !== 'active' ? `
+                                        <li><a class="dropdown-item" href="#" onclick="reactivateCustomer(${customer.id})">
+                                            <i class="bi bi-play me-2"></i>Reactivate
+                                        </a></li>
+                                        ` : ''}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteCustomer(${customer.id}, '${customer.name.replace(/'/g, "\\'")}')">
+                                            <i class="bi bi-trash me-2"></i>Delete Customer
+                                        </a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+                
+                document.getElementById('statLicenses').textContent = totalLicenses;
+                document.getElementById('statAutoRenew').textContent = totalAutoRenew;
+            } catch (e) {
+                console.error('Error loading customers:', e);
+                document.getElementById('customersBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Error loading customers</td></tr>';
+            }
+        }
+        
+        function showAddCustomerModal() {
+            document.getElementById('newCustomerName').value = '';
+            document.getElementById('newCustomerEmail').value = '';
+            new bootstrap.Modal(document.getElementById('addCustomerModal')).show();
+        }
+        
+        async function createCustomer() {
+            const name = document.getElementById('newCustomerName').value.trim();
+            const email = document.getElementById('newCustomerEmail').value.trim();
+            
+            if (!name) {
+                alert('Please enter a customer name');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/customers', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, email})
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')).hide();
+                    alert(`Customer created!\n\nCustomer Number: ${result.customer.customer_number}\n\nShare this number with the customer for activation.`);
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function viewCustomer(customerId) {
+            try {
+                const response = await fetch(`/api/customers/${customerId}`);
+                const result = await response.json();
+                
+                if (!result.customer) {
+                    alert('Customer not found');
+                    return;
+                }
+                
+                const c = result.customer;
+                const safeName = c.name.replace(/'/g, "\\'");
+                const safeEmail = (c.email || '').replace(/'/g, "\\'");
+                
+                const licensesHtml = c.licenses.map(lic => {
+                    var autoRenewBadge = lic.auto_renew ? `<span class="badge bg-success me-1" id="autoRenewBadge_${lic.id}">Auto-renew</span>` : '';
+                    var stripeBadge = lic.stripe_subscription_id ? '<span class="badge bg-info me-1">Stripe</span>' : '';
+                    var maskedKey = lic.license_key.substring(0, 8) + '****' + lic.license_key.substring(lic.license_key.length - 4);
+                    
+                    return `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <code id="keyDisplay_${lic.id}">${maskedKey}</code>
+                                <button class="btn btn-sm btn-link p-0" onclick="toggleKeyVisibility(${lic.id}, '${lic.license_key.replace(/'/g, "\\'")}', '${maskedKey}')" title="Show full key">
+                                    <i class="bi bi-eye" id="keyIcon_${lic.id}"></i>
+                                </button>
+                                <button class="btn btn-sm btn-link p-0" onclick="copyToClipboard('${lic.license_key.replace(/'/g, "\\'")}', 'License Key')" title="Copy">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>${lic.expiry_date}</td>
+                        <td>
+                            <span class="status-badge ${lic.status === 'active' ? 'status-active' : 'status-expired'}">${lic.status}</span>
+                            ${autoRenewBadge}
+                            ${stripeBadge}
+                        </td>
+                        <td>${lic.mac_address || 'Any'}</td>
+                        <td>${lic.renewal_interval || '-'}</td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                <button class="btn btn-sm btn-outline-primary" onclick="showRenewModal(${lic.id}, '${safeName}', '${lic.expiry_date}')">
+                                    <i class="bi bi-arrow-repeat"></i> Renew
+                                </button>
+                                ${lic.status === 'active' ? `<button class="btn btn-sm btn-outline-danger" onclick="suspendLicense(${lic.id})" title="Suspend"><i class="bi bi-pause"></i></button>` : ''}
+                                ${lic.status !== 'active' && lic.status !== 'cancelled' ? `<button class="btn btn-sm btn-outline-success" onclick="reactivateLicense(${lic.id})" title="Reactivate"><i class="bi bi-play"></i></button>` : ''}
+                                <button class="btn btn-sm btn-outline-secondary" id="autoRenewBtn_${lic.id}" onclick="toggleAutoRenew(${lic.id}, ${!lic.auto_renew})" title="${lic.auto_renew ? 'Disable' : 'Enable'} auto-renew">
+                                    <i class="bi bi-${lic.auto_renew ? 'pause' : 'play'}-circle"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `}).join('');
+                
+                document.getElementById('customerDetailContent').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h5>Customer Information</h5>
+                            <table class="table table-sm">
+                                <tr><td><strong>Customer Number</strong></td><td><code>${c.customer_number}</code></td></tr>
+                                <tr><td><strong>Name</strong></td><td>${c.name}</td></tr>
+                                <tr><td><strong>Email</strong></td><td>${c.email || 'N/A'}</td></tr>
+                                <tr><td><strong>Status</strong></td><td><span class="status-badge ${c.status === 'active' ? 'status-active' : 'status-expired'}">${c.status}</span></td></tr>
+                                <tr><td><strong>Created</strong></td><td>${c.created_at}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-8">
+                            <h5>Licenses</h5>
+                            <button class="btn btn-sm btn-primary mb-3" onclick="generateLicenseForCustomer(${c.id})">
+                                <i class="bi bi-plus-circle"></i> Generate License
+                            </button>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr><th style="width:18%">Key</th><th style="width:10%">Expires</th><th style="width:18%">Status</th><th style="width:10%">MAC</th><th style="width:10%">Interval</th><th style="width:34%">Actions</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${licensesHtml || '<tr><td colspan="6" class="text-muted">No licenses</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                
+                new bootstrap.Modal(document.getElementById('customerDetailModal')).show();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        function showSendLicenseModal(licenseId) {
+            document.getElementById('sendLicModal').dataset.licenseId = licenseId;
+            document.getElementById('sendLicMessage').value = '';
+            document.getElementById('sendLicBtn').disabled = false;
+            document.getElementById('sendLicBtnText').textContent = 'Send Email';
+            
+            var custName = document.querySelector('#customerDetailContent td:nth-child(2)');
+            if (custName) {
+                document.getElementById('sendLicCustomerName').value = custName.textContent.trim();
+            }
+            
+            bootstrap.Modal.getInstance(document.getElementById('customerDetailModal'))?.hide();
+            new bootstrap.Modal(document.getElementById('sendLicenseModal')).show();
+        }
+        
+        async function sendLicenseEmail() {
+            var modal = document.getElementById('sendLicModal');
+            var licenseId = modal.dataset.licenseId;
+            var email = document.getElementById('sendLicEmail').value.trim();
+            var message = document.getElementById('sendLicMessage').value.trim();
+            
+            var btn = document.getElementById('sendLicBtn');
+            btn.disabled = true;
+            document.getElementById('sendLicBtnText').textContent = 'Sending...';
+            
+            try {
+                const response = await fetch('/api/email/send-license', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        license_id: parseInt(licenseId),
+                        email: email || null,
+                        message: message
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('sendLicenseModal')).hide();
+                    alert(result.message);
+                } else if (result.preview) {
+                    btn.disabled = false;
+                    document.getElementById('sendLicBtnText').textContent = 'Send Email';
+                    alert('SMTP is not configured. Please configure SMTP settings first.');
+                } else {
+                    btn.disabled = false;
+                    document.getElementById('sendLicBtnText').textContent = 'Send Email';
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                btn.disabled = false;
+                document.getElementById('sendLicBtnText').textContent = 'Send Email';
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        function toggleKeyVisibility(licenseId, fullKey, maskedKey) {
+            var display = document.getElementById('keyDisplay_' + licenseId);
+            var icon = document.getElementById('keyIcon_' + licenseId);
+            
+            if (display.textContent === fullKey) {
+                display.textContent = maskedKey;
+                icon.className = 'bi bi-eye';
+                icon.parentElement.title = 'Show full key';
+            } else {
+                display.textContent = fullKey;
+                icon.className = 'bi bi-eye-slash';
+                icon.parentElement.title = 'Hide full key';
+            }
+        }
+        
+        function showRenewModal(licenseId, customerName, currentExpiry) {
+            currentRenewalLicenseId = licenseId;
+            document.getElementById('renewCustomerName').value = customerName;
+            document.getElementById('renewCurrentExpiry').value = currentExpiry;
+            document.getElementById('renewDays').value = '365';
+            document.getElementById('renewTypeManual').checked = true;
+            document.getElementById('stripeRenewOptions').style.display = 'none';
+            document.getElementById('manualRenewInfo').style.display = 'block';
+            document.getElementById('renewBtnText').textContent = 'Renew License';
+            
+            bootstrap.Modal.getInstance(document.getElementById('customerDetailModal'))?.hide();
+            new bootstrap.Modal(document.getElementById('renewLicenseModal')).show();
+        }
+        
+        async function renewLicense() {
+            if (!currentRenewalLicenseId) {
+                alert('No license selected');
+                return;
+            }
+            
+            const days = parseInt(document.getElementById('renewDays').value) || 365;
+            const renewType = document.querySelector('input[name="renewType"]:checked').value;
+            const autoRenew = renewType === 'stripe';
+            const interval = document.getElementById('renewInterval').value;
+            
+            try {
+                const response = await fetch(`/api/licenses/online/${currentRenewalLicenseId}/renew`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        days: days,
+                        auto_renew: autoRenew,
+                        renewal_interval: interval
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('renewLicenseModal')).hide();
+                    
+                    if (result.stripe_checkout_url) {
+                        if (confirm('License renewed! Redirect to Stripe checkout for auto-renewal setup?')) {
+                            window.open(result.stripe_checkout_url, '_blank');
+                        }
+                    } else {
+                        alert(`License renewed! New expiry: ${result.expiry_date}`);
+                    }
+                    
+                    refreshCustomers();
+                    refreshRenewals();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function toggleAutoRenew(licenseId, enable) {
+            var btn = document.getElementById('autoRenewBtn_' + licenseId);
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            }
+            
+            try {
+                const response = await fetch(`/api/licenses/online/${licenseId}/toggle-auto-renew`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enable: enable})
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.title = enable ? 'Disable auto-renew' : 'Enable auto-renew';
+                        btn.innerHTML = '<i class="bi bi-' + (enable ? 'pause' : 'play') + '-circle"></i>';
+                    }
+                    
+                    var badge = document.getElementById('autoRenewBadge_' + licenseId);
+                    if (enable && !badge) {
+                        var td = btn.closest('tr').querySelector('td:nth-child(3)');
+                        var span = document.createElement('span');
+                        span.className = 'badge bg-success me-1';
+                        span.id = 'autoRenewBadge_' + licenseId;
+                        span.textContent = 'Auto-renew';
+                        td.appendChild(span);
+                    } else if (!enable && badge) {
+                        badge.remove();
+                    }
+                } else {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-' + (!enable ? 'pause' : 'play') + '-circle"></i>';
+                    }
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-' + (!enable ? 'pause' : 'play') + '-circle"></i>';
+                }
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function suspendCustomer(customerId) {
+            if (!confirm('Suspend this customer? They will no longer be able to use their license.')) return;
+            
+            try {
+                const response = await fetch(`/api/customers/${customerId}/suspend`, {method: 'PUT'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('Customer suspended');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function cancelCustomer(customerId) {
+            if (!confirm('Cancel this customer? This action cannot be undone.')) return;
+            
+            try {
+                const response = await fetch(`/api/customers/${customerId}/cancel`, {method: 'PUT'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('Customer cancelled');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function reactivateCustomer(customerId) {
+            try {
+                const response = await fetch(`/api/customers/${customerId}/reactivate`, {method: 'PUT'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('Customer reactivated');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function deleteCustomer(customerId, customerName) {
+            if (!confirm(`WARNING: This will PERMANENTLY DELETE:\n\n• Customer: ${customerName}\n• All licenses for this customer\n• All session data\n\nAre you sure?`)) return;
+            
+            if (!confirm(`Final confirmation: Delete ${customerName} and ALL associated data?`)) return;
+            
+            try {
+                const response = await fetch(`/api/customers/${customerId}/delete`, {method: 'DELETE'});
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Customer '${customerName}' and all data deleted.`);
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function generateLicenseForCustomer(customerId) {
+            try {
+                const response = await fetch('/api/customers');
+                const data = await response.json();
+                
+                const select = document.getElementById('licenseCustomerSelect');
+                select.innerHTML = '<option value="">Select customer...</option>';
+                
+                data.customers.forEach(c => {
+                    const option = document.createElement('option');
+                    option.value = c.id;
+                    option.textContent = `${c.customer_number} - ${c.name}`;
+                    if (c.id === customerId) option.selected = true;
+                    select.appendChild(option);
+                });
+                
+                document.getElementById('licenseMacAddress').value = '';
+                document.getElementById('licenseDays').value = '365';
+                document.getElementById('licenseBindMac').checked = true;
+                document.getElementById('licenseAutoRenew').checked = false;
+                document.getElementById('renewalIntervalGroup').style.display = 'none';
+                document.getElementById('stripePriceGroup').style.display = 'none';
+                
+                bootstrap.Modal.getInstance(document.getElementById('customerDetailModal'))?.hide();
+                new bootstrap.Modal(document.getElementById('generateLicenseModal')).show();
+            } catch (e) {
+                alert('Error loading customers: ' + e.message);
+            }
+        }
+        
+        async function generateOnlineLicense() {
+            const customerId = document.getElementById('licenseCustomerSelect').value;
+            const macAddress = document.getElementById('licenseMacAddress').value.trim();
+            const expiryDays = parseInt(document.getElementById('licenseDays').value) || 365;
+            const bindToMac = document.getElementById('licenseBindMac').checked;
+            const autoRenew = document.getElementById('licenseAutoRenew').checked;
+            const renewalInterval = document.getElementById('licenseRenewalInterval').value;
+            const stripePriceId = document.getElementById('licenseStripePrice').value.trim();
+            
+            if (!customerId) {
+                alert('Please select a customer');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/licenses/online/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        customer_id: parseInt(customerId),
+                        mac_address: macAddress,
+                        expiry_days: expiryDays,
+                        bind_to_mac: bindToMac,
+                        auto_renew: autoRenew,
+                        stripe_price_id: stripePriceId,
+                        renewal_interval: renewalInterval
+                    })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const custResponse = await fetch(`/api/customers/${customerId}`);
+                    const custResult = await custResponse.json();
+                    
+                    document.getElementById('displayCustomerNumber').value = custResult.customer.customer_number;
+                    document.getElementById('displayLicenseKey').value = result.license.license_key;
+                    document.getElementById('displayExpiryDate').value = result.license.expiry_date;
+                    
+                    if (autoRenew) {
+                        document.getElementById('autoRenewDisplay').style.display = 'block';
+                        document.getElementById('displayAutoRenew').value = `Enabled (${renewalInterval})`;
+                    } else {
+                        document.getElementById('autoRenewDisplay').style.display = 'none';
+                    }
+                    
+                    bootstrap.Modal.getInstance(document.getElementById('generateLicenseModal')).hide();
+                    new bootstrap.Modal(document.getElementById('licenseKeyModal')).show();
+                    
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function suspendLicense(licenseId) {
+            try {
+                const response = await fetch(`/api/licenses/online/${licenseId}/suspend`, {method: 'PUT'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('License suspended');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function reactivateLicense(licenseId) {
+            try {
+                const response = await fetch(`/api/licenses/online/${licenseId}/reactivate`, {method: 'PUT'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('License reactivated');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function refreshRenewals() {
+            try {
+                const response = await fetch('/api/licenses/renewals');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('renewalsBody');
+                tbody.innerHTML = '';
+                
+                if (!data.renewals || data.renewals.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No renewals found</td></tr>';
+                    return;
+                }
+                
+                data.renewals.forEach(r => {
+                    const row = `
+                        <tr>
+                            <td>${r.customer_name}</td>
+                            <td><code>${r.customer_number}</code></td>
+                            <td><code>${r.license_key}</code></td>
+                            <td>${r.previous_expiry}</td>
+                            <td>${r.new_expiry}</td>
+                            <td>+${r.additional_days}</td>
+                            <td>${r.generated_date}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (e) {
+                console.error('Error loading renewals:', e);
+                document.getElementById('renewalsBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading renewals</td></tr>';
+            }
+        }
+        
+        document.getElementById('renewals-tab')?.addEventListener('shown.bs.tab', function() {
+            refreshRenewals();
+        });
+        
+        async function refreshLogs() {
+            const search = document.getElementById('logSearch').value;
+            const action = document.getElementById('logActionFilter').value;
+            const entity = document.getElementById('logEntityFilter').value;
+            
+            var url = '/api/logs?limit=500';
+            if (action !== 'all') url += '&action=' + encodeURIComponent(action);
+            if (entity !== 'all') url += '&entity=' + encodeURIComponent(entity);
+            if (search) url += '&search=' + encodeURIComponent(search);
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('logsBody');
+                tbody.innerHTML = '';
+                
+                if (!data.logs || data.logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No logs found</td></tr>';
+                    return;
+                }
+                
+                data.logs.forEach(log => {
+                    var actionClass = 'status-active';
+                    if (['DELETE', 'CANCEL'].includes(log.action)) actionClass = 'status-expired';
+                    else if (['SUSPEND'].includes(log.action)) actionClass = 'status-expiring';
+                    else if (['RENEW', 'REACTIVATE', 'EXTEND'].includes(log.action)) actionClass = 'status-perpetual';
+                    else if (log.action === 'EMAIL_SENT') actionClass = 'bg-primary text-white';
+                    
+                    var ts = log.timestamp;
+                    if (ts && ts.includes('T')) {
+                        ts = ts.replace('T', ' ').substring(0, 19);
+                    }
+                    
+                    const row = `
+                        <tr>
+                            <td><small>${ts}</small></td>
+                            <td><span class="status-badge ${actionClass}">${log.action}</span></td>
+                            <td><small>${log.entity_type}</small></td>
+                            <td><small>${log.entity_name || '-'}${log.entity_id ? ' <code>#' + log.entity_id + '</code>' : ''}</small></td>
+                            <td><small>${log.details}</small></td>
+                            <td><small><i class="bi bi-person"></i> ${log.user}</small></td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (e) {
+                console.error('Error loading logs:', e);
+                document.getElementById('logsBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error loading logs</td></tr>';
+            }
+        }
+        
+        document.getElementById('logs-tab')?.addEventListener('shown.bs.tab', function() {
+            refreshLogs();
+        });
+    </script>
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>

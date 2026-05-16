@@ -1,0 +1,610 @@
+{# ============================================================================
+   Floating AI Chat Bubble Widget
+   ----------------------------------------------------------------------------
+   Self-contained partial: HTML + scoped CSS + vanilla-JS controller. Includes
+   nothing from outside; safe to drop into any authenticated page just before
+   </body>. Visibility is gated upstream by the caller via the Jinja flags
+   `chat_widget_show` and `chat_widget_enabled` (set by the
+   `inject_chat_widget_flags` context processor in QR_Server.py).
+
+   Conventions:
+   - All selectors are prefixed with `dims-chat-` to avoid colliding with page
+     CSS / Bootstrap.
+   - Theme is selected client-side from window.location.pathname:
+       /employee-portal/* -> green gradient + POST /chat/employee
+       everything else    -> purple gradient + POST /chat/api
+     Source links use /employee-portal/kb/<id> or /kb/<id> accordingly.
+   - Conversation history is persisted per-context in sessionStorage so it
+     survives page navigation within the tab. History sent to the API is
+     truncated to the last 10 turns (matches existing behavior).
+   ============================================================================ #}
+
+<div id="dims-chat-root" aria-live="polite">
+  <button id="dims-chat-fab"
+          type="button"
+          class="dims-chat-fab"
+          aria-label="Open AI chat assistant"
+          aria-expanded="false"
+          aria-controls="dims-chat-panel">
+    <i class="bi bi-robot dims-chat-fab-icon"></i>
+    <i class="bi bi-x-lg dims-chat-fab-icon-close"></i>
+    <span class="dims-chat-fab-pulse" aria-hidden="true"></span>
+  </button>
+
+  <section id="dims-chat-panel"
+           class="dims-chat-panel"
+           role="dialog"
+           aria-modal="false"
+           aria-labelledby="dims-chat-title"
+           hidden>
+    <header class="dims-chat-header">
+      <div class="dims-chat-header-text">
+        <div id="dims-chat-title" class="dims-chat-title">
+          <i class="bi bi-robot"></i> IT Support Chat
+        </div>
+        <div class="dims-chat-subtitle">Ask me about IT, your devices, or how to do things</div>
+      </div>
+      <div class="dims-chat-header-actions">
+        <a id="dims-chat-fullpage" href="/chat" class="dims-chat-iconbtn" title="Open full chat" aria-label="Open in full page">
+          <i class="bi bi-box-arrow-up-right"></i>
+        </a>
+        <button id="dims-chat-clear" type="button" class="dims-chat-iconbtn" title="Clear conversation" aria-label="Clear conversation">
+          <i class="bi bi-trash"></i>
+        </button>
+        <button id="dims-chat-close" type="button" class="dims-chat-iconbtn" title="Close" aria-label="Close chat">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </header>
+
+    <div id="dims-chat-error" class="dims-chat-error" role="alert" aria-live="assertive"></div>
+
+    <div id="dims-chat-messages" class="dims-chat-messages">
+      <div id="dims-chat-welcome" class="dims-chat-welcome">
+        <div class="dims-chat-welcome-icon"><i class="bi bi-robot"></i></div>
+        <div class="dims-chat-welcome-title">Hi! How can I help?</div>
+        <div class="dims-chat-welcome-sub">Ask a question to get started.</div>
+      </div>
+    </div>
+
+    <form id="dims-chat-form" class="dims-chat-input" autocomplete="off">
+      <input id="dims-chat-text"
+             type="text"
+             class="dims-chat-textbox"
+             placeholder="Type your message..."
+             aria-label="Message"
+             maxlength="2000"
+             required>
+      <button id="dims-chat-send" type="submit" class="dims-chat-send" aria-label="Send">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </form>
+  </section>
+</div>
+
+<style>
+  /* ----------------------------------------------------------------------
+     Scoped styles (all selectors prefixed dims-chat-)
+     ---------------------------------------------------------------------- */
+  #dims-chat-root {
+    --dims-chat-grad-start: #667eea;
+    --dims-chat-grad-end:   #764ba2;
+    --dims-chat-fab-size:   58px;
+    --dims-chat-z:          1080;
+    color-scheme: light;
+  }
+  #dims-chat-root.dims-chat-employee {
+    --dims-chat-grad-start: #11998e;
+    --dims-chat-grad-end:   #38ef7d;
+  }
+
+  /* Floating action button */
+  .dims-chat-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: var(--dims-chat-fab-size);
+    height: var(--dims-chat-fab-size);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    z-index: var(--dims-chat-z);
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    overflow: visible;
+  }
+  .dims-chat-fab:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px rgba(0,0,0,0.22), 0 3px 8px rgba(0,0,0,0.15); }
+  .dims-chat-fab:active { transform: translateY(0) scale(0.98); }
+  .dims-chat-fab:focus-visible { outline: 3px solid rgba(255,255,255,0.9); outline-offset: 3px; }
+  .dims-chat-fab-icon, .dims-chat-fab-icon-close {
+    font-size: 1.55rem;
+    line-height: 1;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .dims-chat-fab-icon-close { position: absolute; opacity: 0; transform: rotate(-90deg); }
+  #dims-chat-root.is-open .dims-chat-fab-icon { opacity: 0; transform: rotate(90deg); }
+  #dims-chat-root.is-open .dims-chat-fab-icon-close { opacity: 1; transform: rotate(0deg); }
+  .dims-chat-fab-pulse {
+    position: absolute; inset: -4px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+    opacity: 0.35; z-index: -1; animation: dims-chat-pulse 2.4s ease-out infinite;
+  }
+  #dims-chat-root.is-open .dims-chat-fab-pulse { display: none; }
+  @keyframes dims-chat-pulse {
+    0%   { transform: scale(1);   opacity: 0.35; }
+    70%  { transform: scale(1.4); opacity: 0;    }
+    100% { transform: scale(1.4); opacity: 0;    }
+  }
+
+  /* Expanded panel */
+  .dims-chat-panel {
+    position: fixed;
+    right: 24px;
+    bottom: calc(24px + var(--dims-chat-fab-size) + 14px);
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    height: 560px;
+    max-height: calc(100vh - 120px);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.10);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: var(--dims-chat-z);
+    transform-origin: bottom right;
+    transform: translateY(8px) scale(0.96);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+  }
+  #dims-chat-root.is-open .dims-chat-panel {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .dims-chat-header {
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: 0 0 auto;
+  }
+  .dims-chat-title { font-weight: 600; font-size: 1rem; line-height: 1.2; }
+  .dims-chat-subtitle { font-size: 0.78rem; opacity: 0.9; margin-top: 2px; }
+  .dims-chat-header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .dims-chat-iconbtn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease;
+    font-size: 0.95rem;
+  }
+  .dims-chat-iconbtn:hover, .dims-chat-iconbtn:focus { background: rgba(255,255,255,0.28); color: #fff; }
+  .dims-chat-iconbtn:focus-visible { outline: 2px solid rgba(255,255,255,0.95); outline-offset: 1px; }
+
+  .dims-chat-error { display: none; padding: 8px 14px; background: #fff3cd; color: #856404; border-bottom: 1px solid #ffeeba; font-size: 0.85rem; }
+  .dims-chat-error.is-shown { display: block; }
+
+  .dims-chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 14px;
+    background: #f7f8fb;
+    scroll-behavior: smooth;
+  }
+
+  .dims-chat-welcome { text-align: center; padding: 22px 12px; color: #6c757d; }
+  .dims-chat-welcome-icon {
+    width: 52px; height: 52px; margin: 0 auto 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+    color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+  }
+  .dims-chat-welcome-title { font-weight: 600; color: #2c3e50; margin-bottom: 4px; }
+  .dims-chat-welcome-sub { font-size: 0.85rem; }
+
+  .dims-chat-message {
+    display: flex; gap: 8px; margin-bottom: 12px; animation: dims-chat-fade-in 0.18s ease-out;
+  }
+  .dims-chat-message.user { flex-direction: row-reverse; }
+  .dims-chat-avatar {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 0.95rem;
+  }
+  .dims-chat-message.assistant .dims-chat-avatar {
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+  }
+  .dims-chat-message.user .dims-chat-avatar { background: #495057; }
+  .dims-chat-bubble {
+    max-width: 78%;
+    padding: 9px 12px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  .dims-chat-message.assistant .dims-chat-bubble {
+    background: #fff; color: #2c3e50;
+    border: 1px solid #e9ecef;
+    border-bottom-left-radius: 4px;
+  }
+  .dims-chat-message.user .dims-chat-bubble {
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .dims-chat-bubble p { margin: 0 0 6px; }
+  .dims-chat-bubble p:last-child { margin-bottom: 0; }
+  .dims-chat-bubble strong { font-weight: 600; }
+  .dims-chat-sources {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    font-size: 0.78rem; color: #6c757d;
+  }
+  .dims-chat-message.user .dims-chat-sources {
+    border-top-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.9);
+  }
+  .dims-chat-sources a {
+    color: var(--dims-chat-grad-start); text-decoration: none; margin-right: 6px;
+  }
+  .dims-chat-sources a:hover { text-decoration: underline; }
+  .dims-chat-message.user .dims-chat-sources a { color: #fff; text-decoration: underline; }
+
+  .dims-chat-typing { display: inline-flex; gap: 4px; padding: 2px 0; }
+  .dims-chat-typing span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #adb5bd;
+    animation: dims-chat-bounce 1.4s ease-in-out infinite;
+  }
+  .dims-chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+  .dims-chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dims-chat-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30%           { transform: translateY(-4px); opacity: 1;   }
+  }
+  @keyframes dims-chat-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .dims-chat-input {
+    flex: 0 0 auto;
+    padding: 10px 12px;
+    border-top: 1px solid #e9ecef;
+    background: #fff;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .dims-chat-textbox {
+    flex: 1 1 auto;
+    border: 1px solid #ced4da;
+    border-radius: 999px;
+    padding: 9px 14px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    background: #f8f9fa;
+    color: #212529;
+  }
+  .dims-chat-textbox:focus {
+    border-color: var(--dims-chat-grad-start);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  }
+  .dims-chat-send {
+    flex: 0 0 auto;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--dims-chat-grad-start), var(--dims-chat-grad-end));
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .dims-chat-send:hover:not(:disabled) { transform: scale(1.06); }
+  .dims-chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+  .dims-chat-send:focus-visible { outline: 2px solid var(--dims-chat-grad-start); outline-offset: 2px; }
+
+  /* Mobile / narrow widths */
+  @media (max-width: 480px) {
+    .dims-chat-panel {
+      right: 8px; left: 8px;
+      bottom: calc(16px + var(--dims-chat-fab-size) + 10px);
+      width: auto; height: calc(100vh - 110px);
+    }
+    .dims-chat-fab { right: 16px; bottom: 16px; }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .dims-chat-fab, .dims-chat-panel, .dims-chat-message,
+    .dims-chat-fab-pulse, .dims-chat-typing span, .dims-chat-send {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+
+  /* Lower z-index when a Bootstrap modal is open so we don't overlap it. */
+  body.modal-open #dims-chat-root .dims-chat-fab,
+  body.modal-open #dims-chat-root .dims-chat-panel {
+    z-index: 1040;
+  }
+</style>
+
+<script>
+(function () {
+  // Avoid double-initialization if the partial is somehow included twice.
+  if (window.__dimsChatWidgetInitialized) return;
+  window.__dimsChatWidgetInitialized = true;
+
+  const root      = document.getElementById('dims-chat-root');
+  const fab       = document.getElementById('dims-chat-fab');
+  const panel     = document.getElementById('dims-chat-panel');
+  const closeBtn  = document.getElementById('dims-chat-close');
+  const clearBtn  = document.getElementById('dims-chat-clear');
+  const fullLink  = document.getElementById('dims-chat-fullpage');
+  const messagesEl= document.getElementById('dims-chat-messages');
+  const welcomeEl = document.getElementById('dims-chat-welcome');
+  const errorEl   = document.getElementById('dims-chat-error');
+  const form      = document.getElementById('dims-chat-form');
+  const input     = document.getElementById('dims-chat-text');
+  const sendBtn   = document.getElementById('dims-chat-send');
+
+  if (!root || !fab || !panel) return;
+
+  // ----- Context detection (employee portal vs admin) ----------------------
+  const isEmployee  = window.location.pathname.indexOf('/employee-portal') === 0;
+  const apiEndpoint = isEmployee ? '/chat/employee' : '/chat/api';
+  const kbPrefix    = isEmployee ? '/employee-portal/kb/' : '/kb/';
+  const storageKey  = isEmployee ? 'dims_chat_history_employee' : 'dims_chat_history_admin';
+  const openKey     = 'dims_chat_open';
+
+  if (isEmployee) root.classList.add('dims-chat-employee');
+  if (fullLink)   fullLink.href = isEmployee ? '/chat/employee' : '/chat';
+
+  // ----- State -------------------------------------------------------------
+  let chatHistory = [];
+  let isProcessing = false;
+
+  function loadHistory() {
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) chatHistory = parsed;
+      }
+    } catch (_) { chatHistory = []; }
+  }
+  function persistHistory() {
+    try {
+      // Cap at last 50 turns to keep storage bounded.
+      const trimmed = chatHistory.slice(-50);
+      sessionStorage.setItem(storageKey, JSON.stringify(trimmed));
+    } catch (_) { /* sessionStorage may be unavailable */ }
+  }
+
+  // ----- Rendering helpers -------------------------------------------------
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatBody(text) {
+    // Escape first, then apply our minimal markdown so tags are safe.
+    let html = escapeHtml(text)
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+    return '<p>' + html + '</p>';
+  }
+
+  function hideWelcome() { if (welcomeEl) welcomeEl.style.display = 'none'; }
+
+  function appendMessage(text, sender, opts) {
+    opts = opts || {};
+    hideWelcome();
+
+    const msg = document.createElement('div');
+    msg.className = 'dims-chat-message ' + sender;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'dims-chat-avatar';
+    avatar.innerHTML = '<i class="bi ' + (sender === 'user' ? 'bi-person-fill' : 'bi-robot') + '"></i>';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'dims-chat-bubble';
+
+    if (opts.typing) {
+      bubble.innerHTML = '<span class="dims-chat-typing"><span></span><span></span><span></span></span>';
+      msg.dataset.typing = '1';
+    } else {
+      bubble.innerHTML = formatBody(text);
+      if (opts.sources && opts.sources.length) {
+        const src = document.createElement('div');
+        src.className = 'dims-chat-sources';
+        let html = '<strong>Sources:</strong> ';
+        opts.sources.forEach(function (s) {
+          if (!s) return;
+          const id = encodeURIComponent(s.article_id != null ? s.article_id : '');
+          const title = escapeHtml(s.title || ('Article #' + id));
+          html += '<a href="' + kbPrefix + id + '" target="_blank" rel="noopener">' + title + '</a> ';
+        });
+        src.innerHTML = html;
+        bubble.appendChild(src);
+      }
+    }
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    messagesEl.appendChild(msg);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return msg;
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('is-shown');
+    clearTimeout(showError._t);
+    showError._t = setTimeout(function () {
+      errorEl.classList.remove('is-shown');
+      errorEl.textContent = '';
+    }, 5000);
+  }
+
+  function renderHistoryFromStorage() {
+    if (!chatHistory.length) return;
+    hideWelcome();
+    chatHistory.forEach(function (turn) {
+      if (!turn || !turn.role || !turn.content) return;
+      appendMessage(turn.content, turn.role === 'user' ? 'user' : 'assistant', {
+        sources: turn.sources || null,
+      });
+    });
+  }
+
+  // ----- Open / close ------------------------------------------------------
+  function openPanel() {
+    root.classList.add('is-open');
+    panel.hidden = false;
+    fab.setAttribute('aria-expanded', 'true');
+    panel.setAttribute('aria-modal', 'false');
+    try { sessionStorage.setItem(openKey, '1'); } catch (_) {}
+    // Defer focus until after transition starts so it doesn't jump scroll.
+    setTimeout(function () { input && input.focus(); }, 60);
+  }
+  function closePanel() {
+    root.classList.remove('is-open');
+    fab.setAttribute('aria-expanded', 'false');
+    try { sessionStorage.setItem(openKey, '0'); } catch (_) {}
+    // Keep panel.hidden=false during fade-out, then hide for a11y.
+    setTimeout(function () {
+      if (!root.classList.contains('is-open')) panel.hidden = true;
+    }, 240);
+    fab.focus();
+  }
+  function togglePanel() {
+    if (root.classList.contains('is-open')) closePanel();
+    else openPanel();
+  }
+
+  fab.addEventListener('click', togglePanel);
+  closeBtn && closeBtn.addEventListener('click', closePanel);
+
+  // Clear conversation
+  clearBtn && clearBtn.addEventListener('click', function () {
+    chatHistory = [];
+    persistHistory();
+    messagesEl.innerHTML = '';
+    if (welcomeEl) {
+      messagesEl.appendChild(welcomeEl);
+      welcomeEl.style.display = '';
+    }
+    input && input.focus();
+  });
+
+  // ESC closes when panel is open
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && root.classList.contains('is-open')) {
+      closePanel();
+    }
+  });
+
+  // ----- Send flow ---------------------------------------------------------
+  function sendMessage() {
+    if (isProcessing) return;
+    const text = (input.value || '').trim();
+    if (!text) return;
+
+    appendMessage(text, 'user');
+    chatHistory.push({ role: 'user', content: text });
+    persistHistory();
+    input.value = '';
+
+    isProcessing = true;
+    sendBtn.disabled = true;
+    const typingEl = appendMessage('', 'assistant', { typing: true });
+
+    fetch(apiEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        history: chatHistory.slice(-10),
+      }),
+      credentials: 'same-origin',
+    })
+      .then(function (r) {
+        return r.json().catch(function () { return { error: 'Invalid server response' }; });
+      })
+      .then(function (data) {
+        typingEl && typingEl.remove();
+        isProcessing = false;
+        sendBtn.disabled = false;
+
+        if (!data || data.error) {
+          showError((data && data.error) || 'Something went wrong.');
+          // Drop the user's last message from history so they can retry cleanly.
+          chatHistory.pop();
+          persistHistory();
+          return;
+        }
+
+        const reply = data.response || '';
+        const sources = Array.isArray(data.sources) ? data.sources : null;
+        appendMessage(reply, 'assistant', { sources: sources });
+        chatHistory.push({ role: 'assistant', content: reply, sources: sources });
+        persistHistory();
+      })
+      .catch(function (err) {
+        typingEl && typingEl.remove();
+        isProcessing = false;
+        sendBtn.disabled = false;
+        showError('Sorry, I encountered an error. Please try again.');
+        chatHistory.pop();
+        persistHistory();
+        if (window.console) console.error('[dims-chat]', err);
+      });
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    sendMessage();
+  });
+
+  // ----- Init --------------------------------------------------------------
+  loadHistory();
+  renderHistoryFromStorage();
+
+  try {
+    if (sessionStorage.getItem(openKey) === '1') {
+      // Restore open state across navigation.
+      openPanel();
+    }
+  } catch (_) {}
+})();
+</script>

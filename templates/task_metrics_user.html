@@ -1,0 +1,544 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<title>Task Metrics - {{ username }} - AssetNode</title>
+
+<style>
+body {
+  background: #f8f9fa;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+  max-width: 1400px;
+}
+
+.navbar {
+  background: white !important;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  padding: 15px 20px;
+  border: 1px solid #e9ecef;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #2d3748;
+}
+
+.nav-link {
+  color: #2d3748 !important;
+  font-weight: 500;
+  padding: 8px 16px !important;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+  background: #f1f3f5;
+  color: #495057 !important;
+}
+
+.nav-link.active {
+  background: #495057;
+  color: white !important;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 15px 25px;
+  border-radius: 15px 15px 0 0 !important;
+}
+
+.card-header h5 {
+  margin: 0;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.card-body {
+  padding: 25px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  text-align: center;
+}
+
+.stat-card h6 {
+  color: #6c757d;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.stat-card h3 {
+  color: #2d3748;
+  font-weight: 700;
+  margin: 0;
+}
+
+.stat-card.primary {
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  border: none;
+}
+
+.stat-card.primary h6,
+.stat-card.primary h3 {
+  color: white;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.form-control, .form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #495057;
+  box-shadow: 0 0 0 4px rgba(73, 80, 87, 0.1);
+  outline: none;
+}
+
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  padding: 10px 20px;
+}
+
+.btn-primary {
+  background: #495057;
+}
+
+.btn-primary:hover {
+  background: #343a40;
+}
+
+.btn-outline-secondary {
+  border: 2px solid #e2e8f0;
+  color: #495057;
+}
+
+.btn-outline-secondary:hover {
+  background: #f8f9fa;
+  border-color: #495057;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+
+.filter-btn.active {
+  background: #495057;
+  color: white;
+  border-color: #495057;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table th {
+  background: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+  color: #495057;
+  font-weight: 600;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.chart-container {
+  position: relative;
+  height: 300px;
+}
+
+.status-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-open { background: #fff3cd; color: #856404; }
+.status-in_progress { background: #cff4fc; color: #055160; }
+.status-resolved { background: #d1e7dd; color: #0f5132; }
+.status-closed { background: #e2e3e5; color: #41464b; }
+
+.priority-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.priority-low { background: #d2f4ea; color: #146c43; }
+.priority-medium { background: #cff4fc; color: #055160; }
+.priority-high { background: #feecdc; color: #9c4221; }
+.priority-critical { background: #f8d7da; color: #842029; }
+
+.text-muted-small {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.task-link {
+  color: #495057;
+  text-decoration: none;
+}
+
+.task-link:hover {
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{{ url_for('home') }}">
+        <i class="bi bi-box-seam"></i> AssetNode
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="topNav">
+        <ul class="navbar-nav me-auto">
+          {% if can_access('home') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}"><i class="bi bi-house"></i> Home</a></li>
+          {% endif %}
+          {% if can_access('list_devices') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('list_devices') }}"><i class="bi bi-laptop"></i> Devices</a></li>
+          {% endif %}
+          {% if can_access('list_printers') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('list_printers') }}"><i class="bi bi-printer"></i> Printers</a></li>
+          {% endif %}
+          {% if can_access('tasks_list') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('tasks_list') }}"><i class="bi bi-list-check"></i> Tasks</a></li>
+          {% endif %}
+          {% if can_access('tasks_list') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('task_metrics') }}"><i class="bi bi-graph-up"></i> Task Metrics</a></li>
+          {% endif %}
+          {% if can_access('employees_list') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('employees_list') }}"><i class="bi bi-people"></i> Employees</a></li>
+          {% endif %}
+          {% if can_access('items_list') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('items_list') }}"><i class="bi bi-box-seam"></i> Inventory</a></li>
+          {% endif %}
+          {% if can_access('printer_supplies') %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('printer_supplies') }}"><i class="bi bi-droplet"></i> Levels</a></li>
+          {% endif %}
+        </ul>
+        <div class="d-flex align-items-center gap-2">
+          {% if logo %}<img src="{{ logo }}" alt="Logo" style="max-height:36px;">{% endif %}
+          {% if user %}<span class="me-2 small text-muted">{{ user.username }} ({{ user.role }})</span>{% endif %}
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title mb-0">
+      <i class="bi bi-person"></i> {{ username }} - Task Performance
+    </h2>
+    <a href="{{ url_for('task_metrics') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Overview
+    </a>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-auto">
+          <label class="form-label">Date Range</label>
+          <div class="btn-group">
+            <button class="btn btn-outline-secondary filter-btn {% if period == '7' %}active{% endif %}" onclick="setPeriod('7')">7 Days</button>
+            <button class="btn btn-outline-secondary filter-btn {% if period == '30' %}active{% endif %}" onclick="setPeriod('30')">30 Days</button>
+            <button class="btn btn-outline-secondary filter-btn {% if period == '90' %}active{% endif %}" onclick="setPeriod('90')">90 Days</button>
+            <button class="btn btn-outline-secondary filter-btn {% if period == 'ytd' %}active{% endif %}" onclick="setPeriod('ytd')">Year to Date</button>
+            <button class="btn btn-outline-secondary filter-btn {% if period == 'all' %}active{% endif %}" onclick="setPeriod('all')">All Time</button>
+          </div>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Custom Start</label>
+          <input type="date" class="form-control" id="startDate" value="{{ start_date or '' }}" onchange="applyCustomDates()">
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Custom End</label>
+          <input type="date" class="form-control" id="endDate" value="{{ end_date or '' }}" onchange="applyCustomDates()">
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-secondary" onclick="clearFilters()">
+            <i class="bi bi-x-lg"></i> Clear
+          </button>
+        </div>
+      </div>
+      {% if start_date or end_date %}
+      <div class="mt-2 text-muted-small">
+        <i class="bi bi-info-circle"></i> Showing data from {{ start_date or 'beginning' }} to {{ end_date or 'now' }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="stat-card primary">
+        <h6>Assigned Tasks</h6>
+        <h3>{{ stats.assigned_count }}</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <h6>Resolved Tasks</h6>
+        <h3>{{ stats.resolved_count }}</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <h6>Avg Resolution Time</h6>
+        <h3>{{ stats.avg_resolution_time }}</h3>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card">
+        <h6>Avg First Response</h6>
+        <h3>{{ stats.avg_first_response }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-pie-chart"></i> Tasks by Status</h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="statusChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-bar-chart"></i> Tasks by Priority</h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <canvas id="priorityChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h5><i class="bi bi-list-task"></i> Tasks</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>Created</th>
+              <th>Resolved</th>
+              <th>Resolution Time</th>
+              <th>First Response</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tasks %}
+            <tr>
+              <td>
+                <a href="{{ url_for('task_view', task_id=t.id) }}" class="task-link">
+                  #{{ t.id }} - {{ t.title[:50] }}{% if t.title|length > 50 %}...{% endif %}
+                </a>
+              </td>
+              <td>
+                <span class="status-badge status-{{ t.status }}">{{ t.status.replace('_', ' ').title() }}</span>
+              </td>
+              <td>
+                <span class="priority-badge priority-{{ t.priority }}">{{ t.priority.title() }}</span>
+              </td>
+              <td>{{ t.created_at[:10] }}</td>
+              <td>
+                {% if t.resolved_at %}
+                  {{ t.resolved_at[:10] }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if t.resolution_time %}
+                  {{ t.resolution_time }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if t.first_response_time %}
+                  {{ t.first_response_time }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-muted">No tasks found</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function setPeriod(period) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('period', period);
+  url.searchParams.delete('start_date');
+  url.searchParams.delete('end_date');
+  window.location.href = url.toString();
+}
+
+function applyCustomDates() {
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+  if (start || end) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('period');
+    if (start) url.searchParams.set('start_date', start);
+    if (end) url.searchParams.set('end_date', end);
+    window.location.href = url.toString();
+  }
+}
+
+function clearFilters() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('period');
+  url.searchParams.delete('start_date');
+  url.searchParams.delete('end_date');
+  window.location.href = url.toString();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const statusData = {{ status_data | tojson }};
+  const priorityData = {{ priority_data | tojson }};
+
+  const statusColors = {
+    'open': '#ffc107',
+    'in_progress': '#0dcaf0',
+    'resolved': '#198754',
+    'closed': '#6c757d'
+  };
+
+  const priorityColors = {
+    'low': '#20c997',
+    'medium': '#0dcaf0',
+    'high': '#fd7e14',
+    'critical': '#dc3545'
+  };
+
+  new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(statusData),
+      datasets: [{
+        data: Object.values(statusData),
+        backgroundColor: Object.keys(statusData).map(k => statusColors[k] || '#6c757d')
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right' }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('priorityChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(priorityData),
+      datasets: [{
+        label: 'Tasks',
+        data: Object.values(priorityData),
+        backgroundColor: Object.keys(priorityData).map(k => priorityColors[k] || '#6c757d')
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+});
+</script>
+
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>
+

@@ -1,0 +1,1025 @@
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<title>Device Inventory - Home</title>
+<style>
+.header-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 50px 40px;
+  margin: 0 auto;
+  max-width: 1400px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated background pattern */
+.header-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(102, 126, 234, 0.03) 10px,
+      rgba(102, 126, 234, 0.03) 20px
+    );
+  animation: slidePattern 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes slidePattern {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+.logo-container {
+  display: inline-block;
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.logo-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 4.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f857a6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s ease-in-out infinite;
+  text-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.logo-accent {
+  color: #f857a6;
+  font-weight: 900;
+}
+
+/* Geometric decorations */
+.geo-decoration {
+  position: absolute;
+  z-index: 1;
+}
+
+.cube {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  transform: rotate(45deg);
+  animation: float 6s ease-in-out infinite;
+  top: 20px;
+  left: 50px;
+}
+
+.circle {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(248, 87, 166, 0.3);
+  border-radius: 50%;
+  animation: float 5s ease-in-out infinite reverse;
+  top: 60px;
+  right: 80px;
+}
+
+.triangle {
+  width: 0;
+  height: 0;
+  border-left: 30px solid transparent;
+  border-right: 30px solid transparent;
+  border-bottom: 52px solid rgba(102, 126, 234, 0.2);
+  animation: float 7s ease-in-out infinite;
+  bottom: 40px;
+  right: 100px;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(45deg); }
+  50% { transform: translateY(-20px) rotate(45deg); }
+}
+
+.node-dots {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.dot:nth-child(1) { top: 30%; left: 15%; animation-delay: 0s; }
+.dot:nth-child(2) { top: 45%; left: 85%; animation-delay: 0.3s; }
+.dot:nth-child(3) { top: 70%; left: 20%; animation-delay: 0.6s; }
+.dot:nth-child(4) { top: 25%; right: 10%; animation-delay: 0.9s; }
+.dot:nth-child(5) { bottom: 30%; right: 25%; animation-delay: 1.2s; }
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% { 
+    transform: scale(1.5);
+    opacity: 0.8;
+  }
+}
+
+.subtitle {
+  font-family: 'Space Grotesk', sans-serif;
+  color: #6c757d;
+  font-size: 1.3rem;
+  font-weight: 300;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 2;
+  margin-top: 10px;
+}
+
+.subtitle strong {
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.connection-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), transparent);
+  top: 50%;
+  width: 200px;
+  z-index: 1;
+}
+
+.line-left {
+  left: -100px;
+  animation: slideInLeft 2s ease-out infinite;
+}
+
+.line-right {
+  right: -100px;
+  animation: slideInRight 2s ease-out infinite;
+}
+
+@keyframes slideInLeft {
+  0%, 100% { transform: translateX(-50px); opacity: 0; }
+  50% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  0%, 100% { transform: translateX(50px); opacity: 0; }
+  50% { transform: translateX(0); opacity: 1; }
+}
+
+/* Network node icon */
+.network-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  opacity: 0.03;
+  z-index: 0;
+}
+
+.network-icon svg {
+  width: 100%;
+  height: 100%;
+  animation: rotate 30s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .logo-text {
+    font-size: 3rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .header-card {
+    padding: 35px 25px;
+  }
+
+  .cube, .circle, .triangle {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-text {
+    font-size: 2.2rem;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+  }
+
+  .header-card {
+    padding: 30px 20px;
+  }
+}
+body { 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.home-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  margin-bottom: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.header-card h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+}
+
+.header-card .subtitle {
+  color: #6c757d;
+  font-size: 1.2rem;
+}
+
+.nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .nav-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+.nav-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 35px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  min-height: 280px;
+}
+
+.nav-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--card-color) 0%, var(--card-color-dark) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.nav-card:hover::before {
+  opacity: 0.1;
+}
+
+.nav-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  border-color: var(--card-color);
+}
+
+.nav-card-content {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 2rem;
+  color: white;
+  background: linear-gradient(135deg, var(--card-color) 0%, var(--card-color-dark) 100%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.nav-card h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #2d3748;
+}
+
+.nav-card p {
+  color: #718096;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.nav-card.primary { --card-color: #667eea; --card-color-dark: #5568d3; }
+.nav-card.success { --card-color: #48bb78; --card-color-dark: #38a169; }
+.nav-card.warning { --card-color: #ed8936; --card-color-dark: #dd6b20; }
+.nav-card.info { --card-color: #4299e1; --card-color-dark: #3182ce; }
+.nav-card.danger { --card-color: #f56565; --card-color-dark: #e53e3e; }
+.nav-card.purple { --card-color: #9f7aea; --card-color-dark: #805ad5; }
+.nav-card.teal { --card-color: #38b2ac; --card-color-dark: #319795; }
+.nav-card.indigo { --card-color: #667eea; --card-color-dark: #5a67d8; }
+
+.stats-bar {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 15px;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 0;
+}
+
+.stat-link:hover::before {
+  opacity: 0.1;
+}
+
+.stat-link:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-link:hover .stat-value {
+  color: #667eea;
+}
+
+.stat-content {
+  position: relative;
+  z-index: 1;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  display: block;
+  transition: color 0.3s ease;
+}
+
+.stat-label {
+  color: #718096;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.user-info {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 20px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.user-avatar-link {
+  text-decoration: none;
+}
+
+.user-avatar-link:hover .user-avatar {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+@media (max-width: 992px) {
+  .user-info {
+    position: static;
+    margin: 0 auto 20px;
+    justify-content: center;
+    width: fit-content;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .header-card {
+    padding: 25px 20px;
+    margin-bottom: 20px;
+    border-radius: 15px;
+  }
+
+  .header-card h1 { 
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+
+  .header-card .subtitle {
+    font-size: 1rem;
+  }
+
+  .nav-grid { 
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .nav-card {
+    padding: 20px 15px;
+    border-radius: 12px;
+    min-height: 220px;
+  }
+
+  .nav-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .nav-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+  }
+
+  .nav-card p {
+    font-size: 0.8rem;
+  }
+
+  .stats-bar {
+    padding: 20px 15px;
+    border-radius: 15px;
+  }
+
+  .stat-item {
+    margin-bottom: 20px;
+  }
+
+  .stat-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+  }
+
+  .stat-link {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-card h1 {
+    font-size: 1.75rem;
+  }
+
+  .header-card .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .nav-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+
+  .nav-card {
+    padding: 15px 10px;
+    min-height: 200px;
+  }
+
+  .nav-icon {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+  }
+
+  .nav-card h3 {
+    font-size: 0.95rem;
+  }
+
+  .nav-card p {
+    font-size: 0.7rem;
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+</style>
+</head>
+<body>
+
+<div class="home-container">
+
+<div class="header-card">
+  <!-- Background network icon -->
+  <div class="network-icon">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="3" fill="#667eea"/>
+      <circle cx="50" cy="50" r="3" fill="#667eea"/>
+      <circle cx="150" cy="50" r="3" fill="#667eea"/>
+      <circle cx="50" cy="150" r="3" fill="#667eea"/>
+      <circle cx="150" cy="150" r="3" fill="#667eea"/>
+      <line x1="100" y1="100" x2="50" y2="50" stroke="#667eea" stroke-width="1"/>
+      <line x1="100" y1="100" x2="150" y2="50" stroke="#667eea" stroke-width="1"/>
+      <line x1="100" y1="100" x2="50" y2="150" stroke="#667eea" stroke-width="1"/>
+      <line x1="100" y1="100" x2="150" y2="150" stroke="#667eea" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <!-- Node dots -->
+  <div class="node-dots">
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+
+  <!-- Geometric decorations -->
+  <div class="geo-decoration cube"></div>
+  <div class="geo-decoration circle"></div>
+  <div class="geo-decoration triangle"></div>
+
+  <!-- Connection lines -->
+  <div class="connection-line line-left"></div>
+  <div class="connection-line line-right"></div>
+
+  <!-- Main logo -->
+  <div class="logo-container">
+    <h1 class="logo-text">
+      ASSET<span class="logo-accent">NODE</span>
+    </h1>
+  </div>
+
+  <p class="subtitle">
+    Connected Asset <strong>Management</strong>
+  </p>
+</div>
+
+<!-- User Info -->
+  {% if user %}
+  <div class="user-info">
+    <a href="{{ url_for('profile') }}" class="user-avatar-link" title="View Profile">
+      <div class="user-avatar">{{ user.username[0].upper() }}</div>
+    </a>
+    <div>
+      <small class="text-muted d-block" style="line-height: 1;">{{ user.role }}</small>
+      <strong style="line-height: 1;">{{ user.username }}</strong>
+    </div>
+    <!-- Notification Bell -->
+    {% if notifications and notifications|length > 0 %}
+    <div class="position-relative">
+      <button class="btn btn-link position-relative p-2" onclick="showNotifications(event)" style="color: #667eea;">
+        <i class="bi bi-bell-fill pulse" style="font-size: 1.2rem;"></i>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+          {{ notifications|length }}
+        </span>
+      </button>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+
+
+  <!-- Navigation Cards -->
+  <div class="nav-grid">
+
+    <!-- Devices -->
+    {% if can_access('list_devices') %}
+    <a href="{{ url_for('list_devices') }}" class="nav-card primary">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-laptop"></i>
+        </div>
+        <h3>Devices</h3>
+        <p>Manage and track all your devices</p>
+      </div>
+    </a>
+    {% endif %}
+    
+    <!-- Device LifeCycle -->
+    {% if can_access('device-lifecycle') %}
+    <a href="{{ url_for('device_lifecycle') }}" class="nav-card primary">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-recycle"></i>
+        </div>
+        <h3>Device LifeCycle</h3>
+        <p>LifeCycle Analysis for Devices</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Printers -->
+    {% if can_access('list_printers') %}
+    <a href="{{ url_for('list_printers') }}" class="nav-card info">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-printer"></i>
+        </div>
+        <h3>Printers</h3>
+        <p>Monitor printer inventory and status</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Tasks -->
+    {% if can_access('tasks_list') %}
+    <a href="{{ url_for('tasks_list') }}" class="nav-card warning">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-list-check"></i>
+        </div>
+        <h3>Tasks</h3>
+        <p>Track maintenance and work orders</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Knowledge Base -->
+    {% if can_access('tasks_list') %}
+    <a href="{{ url_for('kb_list') }}" class="nav-card info">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-journal-bookmark"></i>
+        </div>
+        <h3>Knowledge Base</h3>
+        <p>Solutions and troubleshooting guides</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Employees -->
+    {% if can_access('employees_list') %}
+    <a href="{{ url_for('employees_list') }}" class="nav-card success">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-people"></i>
+        </div>
+        <h3>Employees</h3>
+        <p>Manage employee records and assignments</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Items -->
+    {% if can_access('items_list') %}
+<a href="{{ url_for('items_list') }}" class="nav-card purple">
+  <div class="nav-card-content">
+    <div class="nav-icon">
+      <i class="bi bi-box-seam"></i>
+    </div>
+    <h3>Inventory</h3>
+    <p>Track inventory and stock levels</p>
+  </div>
+</a>
+{% endif %}
+
+    <!-- Supplies -->
+    {% if can_access('printer_supplies') %}
+    <a href="{{ url_for('printer_supplies') }}" class="nav-card teal">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-droplet"></i>
+        </div>
+        <h3>Supply Levels</h3>
+        <p>Monitor printer supplies and consumables</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Supply Trends -->
+    {% if can_access('passwords_page') %}
+    <a href="{{ url_for('passwords_page') }}" class="nav-card warning">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-shield-lock"></i>
+        </div>
+        <h3>Password Manager</h3>
+        <p>Manage all your passwords</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Licenses -->
+    {% if can_access('software-licenses') %}
+    <a href="{{ url_for('software_licenses_page') }}" class="nav-card warning">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi-key"></i>
+        </div>
+        <h3>Software Licenses</h3>
+        <p>Manage Software Licenses</p>
+      </div>
+    </a>
+    {% endif %}
+
+
+    <!-- Equipment Requests (Admin Only) -->
+    {% if is_admin or can_access('employees_list') %}
+    <a href="{{ url_for('admin_equipment_requests') }}" class="nav-card warning">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-clipboard-check"></i>
+        </div>
+        <h3>Equipment Requests{% if stats.pending_requests is defined and stats.pending_requests > 0 %} <span class="badge bg-danger">{{ stats.pending_requests }}</span>{% endif %}</h3>
+        <p>Review and manage employee equipment requests</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Accounts (Admin Only) -->
+    {% if is_admin %}
+    <a href="{{ url_for('admin_users') }}" class="nav-card danger">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-person-badge"></i>
+        </div>
+        <h3>Accounts</h3>
+        <p>Manage users and permissions</p>
+      </div>
+    </a>
+    {% endif %}
+
+    <!-- Settings -->
+    {% if can_access('settings') %}
+    <a href="{{ url_for('settings') }}" class="nav-card secondary" style="--card-color: #6c757d; --card-color-dark: #5a6268;">
+      <div class="nav-card-content">
+        <div class="nav-icon">
+          <i class="bi bi-gear"></i>
+        </div>
+        <h3>Settings</h3>
+        <p>Configure system preferences</p>
+      </div>
+    </a>
+    {% endif %}
+
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="row">
+      <div class="col-md-3 stat-item">
+        <a href="{{ url_for('list_devices') }}" class="stat-link">
+          <div class="stat-content">
+            <span class="stat-value pulse">{{ stats['devices'] }}</span>
+            <span class="stat-label">Total Devices</span>
+          </div>
+        </a>
+      </div>
+      <div class="col-md-3 stat-item">
+        <a href="{{ url_for('list_printers') }}" class="stat-link">
+          <div class="stat-content">
+            <span class="stat-value pulse">{{ stats['printers'] }}</span>
+            <span class="stat-label">Total Printers</span>
+          </div>
+        </a>
+      </div>
+      <div class="col-md-3 stat-item">
+        <a href="{{ url_for('tasks_list') }}" class="stat-link">
+          <div class="stat-content">
+            <span class="stat-value pulse">{{ stats['tasks'] }}</span>
+            <span class="stat-label">Open Tasks</span>
+          </div>
+        </a>
+      </div>
+      <div class="col-md-3 stat-item">
+        <a href="{{ url_for('items_list') }}" class="stat-link">
+          <div class="stat-content">
+            <span class="stat-value pulse">{{ stats['items'] }}</span>
+            <span class="stat-label">Inventory Items</span>
+          </div>
+        </a>
+      </div>
+    </div>
+    {% if stats['pending_requests'] is defined and stats['pending_requests'] > 0 %}
+    <div class="row mt-3">
+      <div class="col-12">
+        <a href="{{ url_for('admin_equipment_requests') }}" class="stat-link">
+          <div class="stat-content" style="background: linear-gradient(135deg, #f6e05e 0%, #ecc94b 100%); border-radius: 15px; padding: 15px 20px;">
+            <span class="stat-value pulse">{{ stats['pending_requests'] }}</span>
+            <span class="stat-label">Pending Equipment Requests</span>
+            <span class="badge bg-dark ms-2">Review Now</span>
+          </div>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Logout Button -->
+  <div class="text-center mt-4">
+    <a href="{{ url_for('logout') }}" class="btn btn-light btn-lg" style="border-radius: 50px; padding: 12px 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+      <i class="bi bi-box-arrow-right"></i> Logout
+    </a>
+</div>
+
+</div>
+
+<!-- Notification Modal -->
+<div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="notificationModalLabel">
+          <i class="bi bi-bell"></i> Notifications
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="notificationList">
+          {% if notifications and notifications|length > 0 %}
+            {% for notif in notifications %}
+            <div class="alert alert-info mb-3" role="alert">
+              <h6 class="alert-heading">
+                <i class="bi bi-bell"></i> {{ notif.title }}
+              </h6>
+              <p class="mb-2">{{ notif.message }}</p>
+              <hr>
+              <small class="text-muted">
+                <i class="bi bi-clock"></i> {{ notif.created_at[:19].replace('T', ' ') }}
+              </small>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-3">
+              <i class="bi bi-bell-slash" style="font-size: 2rem;"></i>
+              <div class="mt-2">No new notifications</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Show notifications modal
+function showNotifications(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const modal = new bootstrap.Modal(document.getElementById('notificationModal'));
+  modal.show();
+}
+</script>
+
+<script>
+// Add tooltips to truncated table cells on hover
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.table td, .table th').forEach(function(cell) {
+    if (cell.scrollWidth > cell.clientWidth) {
+      cell.title = cell.textContent.trim();
+      cell.style.cursor = 'help';
+    }
+  });
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bulk Scan - Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: #f8f9fa;
+      min-height: 100vh;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container { max-width: 1200px; }
+    
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card {
+      border-radius: 15px;
+      border: 1px solid #e9ecef;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      background: white;
+      margin-bottom: 20px;
+    }
+
+    .card-body { padding: 25px; }
+
+    .scanner-section {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+
+    .scanner-section .form-label { color: white; }
+
+    .form-control, .form-select {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #495057;
+      box-shadow: 0 0 0 4px rgba(73, 80, 87, 0.1);
+      outline: none;
+    }
+
+    .btn {
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: none;
+      padding: 10px 20px;
+    }
+
+    .btn-primary { background: #495057; box-shadow: 0 2px 8px rgba(73, 80, 87, 0.2); }
+    .btn-success { background: #38ef7d; color: #1a1a1a; }
+    .btn-danger { background: #f56565; }
+    .btn-warning { background: #ed8936; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #2d3748; }
+    .btn:hover { transform: translateY(-2px); }
+
+    .table-responsive {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .table thead th {
+      background: #f1f3f5;
+      color: #495057;
+      border: none;
+      padding: 14px 12px;
+      font-weight: 600;
+    }
+
+    .table tbody tr {
+      transition: all 0.2s ease;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .table tbody tr:hover { background: #f8f9fa; }
+
+    .delta-positive { color: #38ef7d; font-weight: 700; }
+    .delta-negative { color: #f56565; font-weight: 700; }
+    .delta-neutral { color: #718096; font-weight: 700; }
+
+    .insufficient-stock {
+      background-color: #f8d7da !important;
+      opacity: 0.6;
+    }
+    .insufficient-stock td {
+      text-decoration: line-through;
+      color: #721c24;
+    }
+    .insufficient-stock .delta-negative,
+    .insufficient-stock .delta-positive {
+      color: #721c24;
+    }
+
+    .batch-summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .stat-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 12px 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-badge strong {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+    }
+
+    .stat-badge span {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    #scan_msg {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      padding: 15px 25px;
+      border-radius: 12px;
+      display: none;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    #scan_msg.success { background: #38ef7d; color: #1a1a1a; }
+    #scan_msg.error { background: #f56565; color: white; }
+
+    .prefix-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .prefix-A { background: #38ef7d; color: #1a1a1a; }
+    .prefix-R { background: #f56565; color: white; }
+    .prefix-L { background: #4299e1; color: white; }
+
+    /* Store locked state styling */
+    #target_store:disabled {
+      background-color: #f1f3f5;
+      color: #868e96;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    .store-locked-hint {
+      font-size: 0.78rem;
+      color: #868e96;
+      margin-top: 4px;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding-left: 1rem; padding-right: 1rem; }
+      .page-title { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="page-title mb-0">
+      <i class="bi bi-upc-scan"></i> Bulk Scan
+    </h3>
+    <a href="{{ url_for('items_list') }}" class="btn btn-secondary">
+      <i class="bi bi-arrow-left"></i> Back to Inventory
+    </a>
+  </div>
+
+  <div id="scan_msg"></div>
+
+  <!-- Store Selection -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title mb-3"><i class="bi bi-shop"></i> Select Target Store</h5>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label" id="store_label">Store *</label>
+          <select id="target_store" class="form-select">
+            <option value="">Select target store</option>
+            {% for store in stores %}
+            <option value="{{ store }}" {% if selected_store == store %}selected{% endif %}>{{ store }}</option>
+            {% endfor %}
+          </select>
+          <div class="store-locked-hint" id="store_locked_hint">
+            <i class="bi bi-lock-fill"></i> Locked during active session — execute or clear to change store.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle"></i>
+            Select a store first, then scan items to add or remove inventory.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scanner Section -->
+  <div class="scanner-section">
+    <div class="row g-3 align-items-end mb-3">
+      <div class="col-md-8">
+        <label class="form-label"><i class="bi bi-upc-scan"></i> Scan Items</label>
+        <div class="input-group">
+          <input id="scan_input" class="form-control" placeholder="Scan or type barcode then press Enter" {% if not selected_store %}disabled{% endif %}>
+          <button id="scan_btn" class="btn btn-light" {% if not selected_store %}disabled{% endif %}>
+            <i class="bi bi-plus-circle"></i> Add
+          </button>
+          <button id="clear_session_btn" class="btn btn-warning">
+            <i class="bi bi-trash"></i> Clear Session
+          </button>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Prefix Mode</label>
+        <div class="d-flex gap-2">
+          <select id="prefix_value" class="form-select" style="width:90px;">
+            <option value="A" class="prefix-A">+ Add</option>
+            <option value="R" class="prefix-R">- Remove</option>
+            <option value="L" class="prefix-L">Lookup</option>
+          </select>
+          <button id="prefix_toggle" class="btn btn-outline-light flex-grow-1">OFF</button>
+        </div>
+      </div>
+    </div>
+    <div class="text-white small">
+      <i class="bi bi-info-circle"></i>
+      <strong>Enter:</strong> Add 1 |
+      <strong>Ctrl+Enter:</strong> Remove 1 |
+      <strong>Shift+Enter:</strong> Lookup (info only) |
+      <strong>Prefix:</strong> A=Add (+1), R=Remove (-1), L=Lookup
+    </div>
+  </div>
+
+  <!-- Batch Summary -->
+  <div id="batch_summary" class="batch-summary" {% if not batch %}style="display:none;"{% endif %}>
+    <h5 class="mb-3"><i class="bi bi-clipboard-data"></i> Batch Summary</h5>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="stat-badge">
+          <strong>Total Items</strong>
+          <span id="total_items">{{ batch|length }}</span>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-badge">
+          <strong>Net Change</strong>
+          <span id="net_change">{% set net = namespace(val=0) %}{% for b in batch.values() %}{% set net.val = net.val + b.delta %}{% endfor %}{{ net.val }}</span>
+        </div>
+      </div>
+      <div class="col-md-6 d-flex align-items-center justify-content-end gap-2">
+        <button id="execute_btn" class="btn btn-success">
+          <i class="bi bi-check2-all"></i> Execute All Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Items Table -->
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th><i class="bi bi-upc"></i> Barcode</th>
+          <th>Item Name</th>
+          <th>Category</th>
+          <th>Current Qty</th>
+          <th>Delta</th>
+          <th>New Qty</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="batch_tbody">
+        {% for barcode, item in batch.items() %}
+        <tr data-barcode="{{ barcode }}" {% if item.new_qty < 0 %}class="insufficient-stock"{% endif %}>
+          <td><code class="text-primary fw-bold">{{ barcode }}</code></td>
+          <td><strong>{{ item.item_name }}</strong></td>
+          <td>{{ item.category or '—' }}</td>
+          <td>{{ item.store_qty }}</td>
+          <td>
+            {% if item.new_qty < 0 %}
+              <span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Insufficient stock</span>
+            {% elif item.delta > 0 %}
+              <span class="delta-positive">+{{ item.delta }}</span>
+            {% elif item.delta < 0 %}
+              <span class="delta-negative">{{ item.delta }}</span>
+            {% else %}
+              <span class="delta-neutral">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.new_qty < 0 %}
+              <span class="text-danger">Would be negative ({{ item.new_qty }})</span>
+            {% else %}
+              <input type="number" class="form-control form-control-sm"
+                     style="width:80px;display:inline-block;"
+                     value="{{ item.delta }}"
+                     onchange="updateDelta('{{ barcode }}', this.value)"
+                     min="-999" max="999">
+              <span class="ms-2 text-muted">= {{ item.new_qty }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-danger" onclick="removeItem('{{ barcode }}')">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not batch %}
+        <tr><td colspan="7" class="text-center text-muted py-4">
+          <i class="bi bi-upc-scan" style="font-size: 3rem; display: block; margin-bottom: 10px;"></i>
+          Select a store and scan items to adjust inventory
+        </td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const scanInput = document.getElementById('scan_input');
+  const scanBtn = document.getElementById('scan_btn');
+  const clearSessionBtn = document.getElementById('clear_session_btn');
+  const executeBtn = document.getElementById('execute_btn');
+  const storeSelect = document.getElementById('target_store');
+  const storeLabel = document.getElementById('store_label');
+  const storeLockedHint = document.getElementById('store_locked_hint');
+  const scanMsg = document.getElementById('scan_msg');
+  const prefixToggle = document.getElementById('prefix_toggle');
+  const prefixValue = document.getElementById('prefix_value');
+  const batchSummary = document.getElementById('batch_summary');
+
+  let prefixModeEnabled = localStorage.getItem('bulk_prefix_mode') === 'true';
+  let prefixValueStored = localStorage.getItem('bulk_prefix_value') || 'A';
+  let scanningStarted = false;
+
+  prefixValue.value = prefixValueStored;
+  updatePrefixToggle();
+
+  // Lock store if batch already has items (e.g. after page reload mid-session)
+  if (document.querySelectorAll('#batch_tbody tr[data-barcode]').length > 0) {
+    disableStoreForScanning();
+  }
+
+  function disableStoreForScanning() {
+    if (!scanningStarted && storeSelect.value) {
+      scanningStarted = true;
+      storeSelect.disabled = true;
+      storeLabel.textContent = 'Store *';
+      storeLockedHint.style.display = 'block';
+    }
+  }
+
+  function enableStoreAfterSession() {
+    scanningStarted = false;
+    storeSelect.disabled = false;
+    storeLabel.textContent = 'Store *';
+    storeLockedHint.style.display = 'none';
+  }
+
+  // Sound effects using Web Audio API
+  let audioCtx = null;
+  function getAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function initAudio() {
+    try {
+      getAudioContext();
+    } catch (e) {}
+  }
+
+  // Initialize audio on first user interaction
+  document.addEventListener('click', initAudio, { once: true });
+  document.addEventListener('keydown', initAudio, { once: true });
+
+  function playSuccessSound() {
+    try {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.3;
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), 100);
+    } catch (e) {}
+  }
+
+  function playErrorSound() {
+    try {
+      const ctx = getAudioContext();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.frequency.value = 300;
+      oscillator.type = 'square';
+      gainNode.gain.value = 0.2;
+      oscillator.start();
+      setTimeout(() => oscillator.stop(), 300);
+    } catch (e) {}
+  }
+
+  function updatePrefixToggle() {
+    prefixToggle.textContent = prefixModeEnabled ? 'ON' : 'OFF';
+    prefixToggle.classList.toggle('btn-success', prefixModeEnabled);
+    prefixToggle.classList.toggle('btn-outline-light', !prefixModeEnabled);
+  }
+
+  prefixToggle.addEventListener('click', () => {
+    prefixModeEnabled = !prefixModeEnabled;
+    localStorage.setItem('bulk_prefix_mode', prefixModeEnabled);
+    updatePrefixToggle();
+  });
+
+  prefixValue.addEventListener('change', () => {
+    localStorage.setItem('bulk_prefix_value', prefixValue.value);
+  });
+
+  function showMsg(text, type) {
+    scanMsg.textContent = text;
+    scanMsg.className = type;
+    scanMsg.style.display = 'block';
+    setTimeout(() => { scanMsg.style.display = 'none'; }, 3000);
+  }
+
+  function updateBatchSummary() {
+    const rows = document.querySelectorAll('#batch_tbody tr[data-barcode]');
+    const totalItems = rows.length;
+    let netChange = 0;
+
+    rows.forEach(row => {
+      const deltaSpan = row.querySelector('.delta-positive, .delta-negative, .delta-neutral');
+      if (deltaSpan) {
+        const delta = parseInt(deltaSpan.textContent) || 0;
+        netChange += delta;
+      }
+    });
+
+    document.getElementById('total_items').textContent = totalItems;
+    const netChangeEl = document.getElementById('net_change');
+    netChangeEl.textContent = (netChange > 0 ? '+' : '') + netChange;
+    netChangeEl.className = netChange > 0 ? 'delta-positive' : (netChange < 0 ? 'delta-negative' : 'delta-neutral');
+
+    batchSummary.style.display = totalItems > 0 ? 'block' : 'none';
+  }
+
+  function scanBarcode(e) {
+    const store = storeSelect.value;
+
+    if (!store) {
+      showMsg('Please select a store first', 'error');
+      return;
+    }
+
+    let barcode = scanInput.value.trim();
+    if (!barcode) return;
+
+    if (e && e.shiftKey) {
+      barcode = 'L' + barcode;
+    } else if (e && e.ctrlKey) {
+      barcode = 'R' + barcode;
+    } else if (prefixModeEnabled && barcode.length > 1 && !['A','R','L'].includes(barcode.charAt(0).toUpperCase())) {
+      barcode = prefixValue.value + barcode;
+    }
+
+    fetch('/items/bulk_scan/add', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({barcode, store})
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        playSuccessSound();
+        // Lock the store dropdown on first successful scan
+        disableStoreForScanning();
+        const prefix = barcode.charAt(0).toUpperCase();
+        if (prefix === 'L') {
+          showMsg(`${data.item_name}: ${data.new_qty} (lookup)`, 'success');
+        } else {
+          const sign = data.delta > 0 ? '+' : '';
+          showMsg(`${data.item_name}: ${sign}${data.delta} -> ${data.new_qty}`, 'success');
+        }
+        location.reload();
+      } else {
+        playErrorSound();
+        showMsg(data.error || 'Item not found', 'error');
+      }
+    })
+    .catch(err => {
+      playErrorSound();
+      showMsg('Error: ' + err.message, 'error');
+    });
+
+    scanInput.value = '';
+    scanInput.focus();
+  }
+
+  storeSelect.addEventListener('change', () => {
+    fetch('/items/bulk_scan/set_store', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({store: storeSelect.value})
+    }).then(() => {
+      if (storeSelect.value) {
+        scanInput.disabled = false;
+        scanBtn.disabled = false;
+        scanInput.focus();
+      } else {
+        scanInput.disabled = true;
+        scanBtn.disabled = true;
+      }
+    });
+  });
+
+  scanBtn.addEventListener('click', scanBarcode);
+
+  scanInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      scanBarcode(e);
+    }
+  });
+
+  clearSessionBtn.addEventListener('click', () => {
+    if (confirm('Clear all items from this session?')) {
+      fetch('/items/bulk_scan/clear', {method: 'POST'})
+        .then(r => r.json())
+        .then(() => {
+          // Unlock the store dropdown after clearing session
+          enableStoreAfterSession();
+          location.reload();
+        });
+    }
+  });
+
+  executeBtn.addEventListener('click', () => {
+    fetch('/items/bulk_scan/execute', {method: 'POST'})
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          playSuccessSound();
+          showMsg(`Successfully updated ${data.updated} item(s)!`, 'success');
+          // Unlock the store dropdown after executing changes
+          enableStoreAfterSession();
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          playErrorSound();
+          showMsg(data.error || 'Failed to execute', 'error');
+        }
+      });
+  });
+
+  if (storeSelect.value) {
+    scanInput.focus();
+  }
+});
+
+function updateDelta(barcode, value) {
+  fetch('/items/bulk_scan/update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({barcode, delta: parseInt(value) || 0})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      location.reload();
+    }
+  });
+}
+
+function removeItem(barcode) {
+  fetch('/items/bulk_scan/remove', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({barcode})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      location.reload();
+    }
+  });
+}
+</script>
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>

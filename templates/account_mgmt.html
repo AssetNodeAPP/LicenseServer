@@ -1,0 +1,814 @@
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<title>User Management - Device Inventory</title>
+<style>
+body {
+  background: #f8f9fa;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+}
+
+/* Page Header */
+.page-header {
+  background: white;
+  border-radius: 15px;
+  padding: 25px 30px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  padding: 8px 16px;
+}
+
+.btn-primary {
+  background: #495057;
+  box-shadow: 0 2px 8px rgba(73, 80, 87, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(73, 80, 87, 0.3);
+  background: #343a40;
+}
+
+.btn-outline-secondary {
+  border: 2px solid #e2e8f0;
+  color: #2d3748;
+  background: white;
+}
+
+.btn-outline-secondary:hover {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+.btn-outline-danger {
+  border: 2px solid #e53e3e;
+  color: #e53e3e;
+  background: white;
+}
+
+.btn-outline-danger:hover {
+  background: #e53e3e;
+  color: white;
+  border-color: #e53e3e;
+}
+
+.btn-outline-primary {
+  border: 2px solid #495057;
+  color: #495057;
+  background: white;
+}
+
+.btn-outline-primary:hover {
+  background: #495057;
+  color: white;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+/* Cards */
+.card {
+  border-radius: 15px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+}
+
+.card-body {
+  padding: 25px;
+}
+
+.card-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 20px;
+}
+
+/* Forms */
+.form-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.form-control, .form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #495057;
+  box-shadow: 0 0 0 4px rgba(73, 80, 87, 0.1);
+  outline: none;
+}
+
+.form-text {
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.form-check {
+  padding-left: 1.75rem;
+}
+
+.form-check-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  cursor: pointer;
+}
+
+.form-check-input:checked {
+  background-color: #495057;
+  border-color: #495057;
+}
+
+.form-check-label {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #2d3748;
+}
+
+/* Permissions Grid */
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.permission-card {
+  background: #f8f9fa;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+}
+
+.permission-card:hover {
+  background: #e9ecef;
+  border-color: #cbd5e0;
+}
+
+.permission-card .form-check {
+  padding-left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.permission-card .form-check-input {
+  margin: 0;
+}
+
+/* Table */
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  background: #f8f9fa;
+  color: #495057;
+  border: none;
+  padding: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table td {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+/* Badges */
+.badge {
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.permission-badge {
+  display: inline-block;
+  margin: 2px;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+}
+
+.text-bg-primary {
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%) !important;
+}
+
+.text-bg-secondary {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+}
+
+/* Alert */
+.alert {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.alert-info {
+  background: linear-gradient(135deg, rgba(66, 153, 225, 0.15) 0%, rgba(49, 130, 206, 0.15) 100%);
+  border-left: 4px solid #4299e1;
+  color: #2c5282;
+}
+
+/* Code */
+code.small {
+  font-size: 0.8rem;
+  background: #f1f3f5;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #495057;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .page-header {
+    padding: 15px 20px;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .card-body {
+    padding: 15px;
+  }
+
+  .table {
+    font-size: 0.85rem;
+  }
+
+  .permissions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <h3 class="page-title mb-0">
+        <i class="bi bi-shield-lock"></i> User Management
+      </h3>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('list_devices') }}">
+          <i class="bi bi-laptop"></i> Devices
+        </a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('logout') }}">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+</div>
+  </div>
+
+  <!-- Add/Update User Card -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">
+        <i class="bi bi-person-plus"></i> Add / Update User
+      </h5>
+      <form method="post" action="{{ url_for('admin_users_add') }}">
+        <div class="row gy-3 gx-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Username</label>
+            <input class="form-control" name="username" required placeholder="Enter username">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" name="password" placeholder="Leave blank to keep current">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Role</label>
+            <select class="form-select" name="role" id="roleSelect">
+              <option value="viewer">Viewer</option>
+              <option value="admin">Admin</option>
+              <option value="custom">Custom Permissions</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Email and 2FA Section -->
+        <div class="row gy-3 gx-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="bi bi-envelope"></i> Email Address
+            </label>
+            <input class="form-control" type="email" name="email" placeholder="user@example.com">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">
+              <i class="bi bi-shield-check"></i> Two-Factor Authentication
+            </label>
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" name="two_fa_enabled" id="twoFaToggle">
+              <label class="form-check-label" for="twoFaToggle">
+                Enable 2FA (requires email verification)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Permissions Section -->
+        <div id="permissionsSection" style="display: none;">
+          <label class="form-label">
+            <i class="bi bi-key"></i> Route Permissions
+          </label>
+          <div class="permissions-grid">
+            {% for route in available_routes %}
+            <div class="permission-card">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions" value="{{ route.value }}" id="perm_{{ route.value }}">
+                <label class="form-check-label" for="perm_{{ route.value }}">
+                  <i class="bi bi-{{ route.icon }}"></i> {{ route.label }}
+                </label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="form-text mb-3">
+            <i class="bi bi-info-circle"></i> Select which routes this user can access. Admin role grants all permissions.
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-save"></i> Save User
+          </button>
+          <button class="btn btn-outline-secondary" type="reset">
+            <i class="bi bi-x-circle"></i> Reset
+          </button>
+        </div>
+      </form>
+      <div class="form-text mt-3">
+        <i class="bi bi-info-circle"></i> Passwords are stored as bcrypt hashes. To update role without changing password, leave password blank.
+      </div>
+    </div>
+  </div>
+
+  <!-- Existing Users Card -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">
+        <i class="bi bi-people"></i> Existing Users
+      </h5>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th><i class="bi bi-person"></i> Username</th>
+              <th><i class="bi bi-shield"></i> Role</th>
+              <th><i class="bi bi-envelope"></i> Email</th>
+              <th><i class="bi bi-key"></i> 2FA</th>
+              <th><i class="bi bi-list-check"></i> Permissions</th>
+              <th><i class="bi bi-shield-lock"></i> Status</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u, rec in users.items() %}
+            <tr>
+              <td><strong>{{ u }}</strong></td>
+              <td>
+                <span class="badge text-bg-{{ 'primary' if rec.role=='admin' else 'secondary' }}">
+                  <i class="bi bi-{{ 'shield-fill-check' if rec.role=='admin' else 'eye' }}"></i>
+                  {{ rec.role }}
+                </span>
+              </td>
+              <td>
+                {% if rec.email %}
+                  <a href="mailto:{{ rec.email }}" class="text-decoration-none">
+                    <i class="bi bi-envelope"></i> {{ rec.email }}
+                  </a>
+                {% else %}
+                  <span class="text-muted small">No email</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if rec.two_fa_enabled %}
+                  <span class="badge bg-success">
+                    <i class="bi bi-shield-check"></i> Enabled
+                  </span>
+                {% else %}
+                  <span class="badge bg-secondary">
+                    <i class="bi bi-shield"></i> Disabled
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if rec.role == 'admin' %}
+                  <span class="badge bg-success permission-badge">All Access</span>
+                {% elif rec.permissions %}
+                  {% for perm in rec.permissions[:3] %}
+                    <span class="badge bg-info permission-badge">{{ perm }}</span>
+                  {% endfor %}
+                  {% if rec.permissions|length > 3 %}
+                    <span class="badge bg-secondary permission-badge">+{{ rec.permissions|length - 3 }} more</span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted small">Default access</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if rec.locked_by_admin %}
+                  <span class="badge bg-warning text-dark">
+                    <i class="bi bi-person-dash"></i> Admin Locked
+                  </span>
+                  {% if rec.lock_reason %}
+                    <div class="small text-muted mt-1">{{ rec.lock_reason }}</div>
+                  {% endif %}
+                {% elif rec.locked_until and rec.locked_until > now_timestamp %}
+                  <span class="badge bg-danger">
+                    <i class="bi bi-clock"></i> Auto-Locked
+                  </span>
+                  <div class="small text-muted mt-1">
+                    {{ ((rec.locked_until - now_timestamp) / 60)|round|int }} min left
+                  </div>
+                {% else %}
+                  <span class="badge bg-success">
+                    <i class="bi bi-unlock"></i> Active
+                  </span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if rec.locked_by_admin or (rec.locked_until and rec.locked_until > now_timestamp) %}
+                  <button class="btn btn-sm btn-outline-success me-1" onclick="unlockUser('{{ u }}')">
+                    <i class="bi bi-unlock"></i> Unlock
+                  </button>
+                {% else %}
+                  <button class="btn btn-sm btn-outline-warning me-1" onclick="lockUser('{{ u }}')">
+                    <i class="bi bi-lock"></i> Lock
+                  </button>
+                {% endif %}
+                <button class="btn btn-sm btn-outline-primary me-1" onclick='editUser({{ {"username": u, "role": rec.role, "permissions": rec.permissions, "email": rec.email, "two_fa_enabled": rec.two_fa_enabled}|tojson }})'>
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <form method="post" action="{{ url_for('admin_users_delete') }}" onsubmit="return confirm('Delete user {{ u }}?');" class="d-inline">
+                  <input type="hidden" name="username" value="{{ u }}">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if not users %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-4">
+                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                <div class="mt-2">No users yet</div>
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications Management Card -->
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">
+        <i class="bi bi-bell"></i> Notifications Management
+      </h5>
+      <form method="post" action="{{ url_for('admin_notifications_create') }}">
+        <div class="row gy-3 gx-3 mb-3">
+          <div class="col-md-12">
+            <label class="form-label">Notification Title</label>
+            <input class="form-control" name="title" required placeholder="Enter notification title">
+          </div>
+        </div>
+
+        <div class="row gy-3 gx-3 mb-3">
+          <div class="col-md-12">
+            <label class="form-label">Message</label>
+            <textarea class="form-control" name="message" required rows="3" placeholder="Enter notification message"></textarea>
+          </div>
+        </div>
+
+        <div class="row gy-3 gx-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Target Users</label>
+            <div class="form-text mb-2">Select users who will see this notification</div>
+            <div class="permissions-grid">
+              {% for u, rec in users.items() %}
+              <div class="permission-card">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="target_users" value="{{ u }}" id="notif_{{ u }}">
+                  <label class="form-check-label" for="notif_{{ u }}">
+                    <i class="bi bi-person"></i> {{ u }}
+                    {% if rec.role == 'admin' %}
+                      <span class="badge bg-primary permission-badge">Admin</span>
+                    {% endif %}
+                  </label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Expiration (Optional)</label>
+            <input class="form-control" type="datetime-local" name="expires_at" placeholder="Leave blank for no expiration">
+            <div class="form-text mt-2">
+              <i class="bi bi-info-circle"></i> Notification will automatically deactivate after this time
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-bell"></i> Create Notification
+          </button>
+          <button class="btn btn-outline-secondary" type="reset">
+            <i class="bi bi-x-circle"></i> Reset
+          </button>
+        </div>
+      </form>
+
+      <!-- Existing Notifications -->
+      <hr class="my-4">
+      <h6 class="card-title">
+        <i class="bi bi-list-ul"></i> Active Notifications
+      </h6>
+      <div id="existingNotifications">
+        <div class="text-center text-muted py-3">
+          <i class="bi bi-hourglass-split" style="font-size: 1.5rem;"></i>
+          <div class="mt-2">Loading notifications...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Modal -->
+<div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="notificationModalLabel">
+          <i class="bi bi-bell"></i> <span id="modalTitle">Notification</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="modalMessage" class="mb-3"></div>
+        <div class="text-muted small">
+          <i class="bi bi-clock"></i> Created: <span id="modalCreatedAt"></span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Show/hide permissions based on role selection
+document.getElementById('roleSelect').addEventListener('change', function() {
+  const permissionsSection = document.getElementById('permissionsSection');
+  if (this.value === 'custom') {
+    permissionsSection.style.display = 'block';
+  } else {
+    permissionsSection.style.display = 'none';
+  }
+});
+
+// Edit user function
+function editUser(userData) {
+  // Set username
+  document.querySelector('input[name="username"]').value = userData.username;
+
+  // Set email
+  document.querySelector('input[name="email"]').value = userData.email || '';
+
+  // Set 2FA toggle
+  document.getElementById('twoFaToggle').checked = userData.two_fa_enabled || false;
+
+  // Set role - check if user has permissions and set to custom if they do
+  const roleSelect = document.getElementById('roleSelect');
+  if (userData.permissions && userData.permissions.length > 0) {
+    roleSelect.value = 'custom';
+  } else {
+    roleSelect.value = userData.role || 'viewer';
+  }
+
+  // Trigger role change to show/hide permissions
+  roleSelect.dispatchEvent(new Event('change'));
+
+  // Small delay to ensure permissions section is visible
+  setTimeout(() => {
+    // First uncheck all permissions
+    document.querySelectorAll('input[name="permissions"]').forEach(checkbox => {
+      checkbox.checked = false;
+    });
+
+    // Then check the appropriate permissions
+    if (userData.permissions && userData.permissions.length > 0) {
+      userData.permissions.forEach(perm => {
+        const checkbox = document.querySelector(`input[name="permissions"][value="${perm}"]`);
+        if (checkbox) {
+          checkbox.checked = true;
+        }
+      });
+    }
+  }, 50);
+
+  // Scroll to form
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Load existing notifications
+function loadNotifications() {
+  fetch('/admin/notifications/list')
+    .then(response => response.json())
+    .then(data => {
+      const container = document.getElementById('existingNotifications');
+      if (data.notifications && data.notifications.length > 0) {
+        container.innerHTML = data.notifications.map(notif => `
+          <div class="alert alert-info alert-dismissible" role="alert">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong><i class="bi bi-bell"></i> ${notif.title}</strong>
+                <div class="small mt-1">${notif.message}</div>
+                <div class="text-muted small mt-2">
+                  <i class="bi bi-people"></i> Target: ${notif.target_users.join(', ')}
+                  <br>
+                  <i class="bi bi-clock"></i> Created: ${new Date(notif.created_at).toLocaleString()}
+                  ${notif.expires_at ? `<br><i class="bi bi-calendar-x"></i> Expires: ${new Date(notif.expires_at).toLocaleString()}` : ''}
+                </div>
+              </div>
+              <div>
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteNotification(${notif.id})">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        container.innerHTML = `
+          <div class="text-center text-muted py-3">
+            <i class="bi bi-bell-slash" style="font-size: 1.5rem;"></i>
+            <div class="mt-2">No active notifications</div>
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      console.error('Error loading notifications:', error);
+      document.getElementById('existingNotifications').innerHTML = `
+        <div class="text-center text-danger py-3">
+          <i class="bi bi-exclamation-triangle" style="font-size: 1.5rem;"></i>
+          <div class="mt-2">Error loading notifications</div>
+        </div>
+      `;
+    });
+}
+
+// Delete notification
+function deleteNotification(id) {
+  if (confirm('Are you sure you want to delete this notification?')) {
+    fetch('/admin/notifications/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `id=${id}`
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        loadNotifications();
+      } else {
+        alert('Error deleting notification: ' + data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error deleting notification:', error);
+      alert('Error deleting notification');
+    });
+  }
+}
+
+// Load notifications on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadNotifications();
+});
+
+// Lock user function
+function lockUser(username) {
+  if (!confirm('Lock user "' + username + '"? They will be unable to log in.')) return;
+  
+  var reason = prompt('Lock reason (optional):') || '';
+  
+  fetch('/admin/users/lock', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'username=' + encodeURIComponent(username) + '&reason=' + encodeURIComponent(reason)
+  })
+  .then(function(response) { return response.json(); })
+  .then(function(data) {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + data.error);
+    }
+  })
+  .catch(function(error) {
+    console.error('Error locking user:', error);
+    alert('Error locking user');
+  });
+}
+
+// Unlock user function
+function unlockUser(username) {
+  fetch('/admin/users/unlock', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'username=' + encodeURIComponent(username)
+  })
+  .then(function(response) { return response.json(); })
+  .then(function(data) {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + data.error);
+    }
+  })
+  .catch(function(error) {
+    console.error('Error unlocking user:', error);
+    alert('Error unlocking user');
+  });
+}
+</script>
+{# Floating AI chat bubble (auto-injected) #}
+{% if chat_widget_show and chat_widget_enabled %}
+  {% include '_chat_widget.html' %}
+{% endif %}
+</body>
+</html>
