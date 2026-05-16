@@ -1,0 +1,13 @@
+.idea/
+__pycache__/
+*.pyc
+.venv
+venv/
+*.db
+*.json
+*.key
+*.pem
+*.log
+dist/
+build/
+*.spec
