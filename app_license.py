@@ -35,7 +35,21 @@ from waitress import serve
 
 from secure_key_signer import SecureFernet, SecureKeySigner
 
-DATA_DIR = os.environ.get("LICENSE_DATA_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"))
+def _get_data_dir():
+    env_dir = os.environ.get("LICENSE_DATA_DIR", "")
+    if env_dir:
+        return env_dir
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+            exe_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+        else:
+            exe_dir = os.path.dirname(os.path.realpath(sys.executable))
+        return os.path.join(exe_dir, "data")
+    if sys.platform.startswith("linux"):
+        return os.path.join(os.path.expanduser("~"), "Documents")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+DATA_DIR = _get_data_dir()
 os.makedirs(DATA_DIR, exist_ok=True)
 
 app = Flask(__name__)
@@ -256,6 +270,18 @@ def init_database():
             stripe_webhook_secret TEXT,
             created_date TEXT NOT NULL,
             updated_date TEXT NOT NULL
+        )
+    ''')
+
+    # Stripe prices mapping table - maps Stripe Price IDs to tier types
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stripe_prices (
+            stripe_price_id TEXT PRIMARY KEY,
+            tier_type TEXT NOT NULL,
+            display_name TEXT,
+            amount_cents INTEGER,
+            active INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL
         )
     ''')
 
@@ -600,7 +626,7 @@ def send_email(recipient_email, subject, body, attachment_path=None, smtp_config
         return False, str(e)
 
 
-def generate_license_email_html(customer_name, customer_number, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_subscription_id, custom_message='', smtp_config=None):
+def generate_license_email_html(customer_name, customer_number, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_subscription_id, custom_message='', smtp_config=None, tier_type='', display_name=''):
     """Generate professional HTML email template for license details"""
     now = datetime.now().strftime('%B %d, %Y')
     status_color = '#10b981' if status == 'active' else '#ef4444' if status in ['cancelled', 'suspended'] else '#f59e0b'
@@ -635,6 +661,19 @@ def generate_license_email_html(customer_name, customer_number, license_key, exp
     
     sender_email = smtp_config['sender_email'] if smtp_config else 'support@assetnode.com'
     
+    tier_type_color = '#6366f1' if tier_type == 'yearly' else '#10b981' if tier_type == 'monthly' else '#8b5cf6'
+    tier_display = display_name or (tier_type.title() if tier_type else '')
+    tier_html = ''
+    if tier_display:
+        tier_html = f'''
+        <tr>
+            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Plan:</td>
+            <td style="padding: 8px 0;">
+                <span style="background-color: {tier_type_color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">{tier_display}</span>
+            </td>
+        </tr>
+        '''
+
     html = f'''
 <!DOCTYPE html>
 <html>
@@ -707,6 +746,7 @@ def generate_license_email_html(customer_name, customer_number, license_key, exp
                                                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">License Key:</td>
                                                 <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600; font-family: 'Courier New', monospace; background-color: #f3f4f6; padding: 8px 12px; border-radius: 4px; display: inline-block;">{license_key}</td>
                                             </tr>
+                                            {tier_html}
                                             <tr>
                                                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Status:</td>
                                                 <td style="padding: 8px 0;">
@@ -1585,7 +1625,7 @@ def smtp_status():
     return jsonify({'configured': config is not None})
 
 
-def _send_license_email(customer_email, customer_name, customer_number, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_subscription_id, custom_message=''):
+def _send_license_email(customer_email, customer_name, customer_number, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_subscription_id, custom_message='', tier_type='', display_name=''):
     """Send license details email to customer with professional HTML design"""
     try:
         smtp_config = load_smtp_settings()
@@ -1610,7 +1650,9 @@ def _send_license_email(customer_email, customer_name, customer_number, license_
             renewal_interval=renewal_interval,
             stripe_subscription_id=stripe_subscription_id,
             custom_message=custom_message,
-            smtp_config=smtp_config
+            smtp_config=smtp_config,
+            tier_type=tier_type,
+            display_name=display_name
         )
         
         body = f"""Dear {customer_name},
@@ -2994,23 +3036,24 @@ def stripe_webhook():
 
 
 def _handle_checkout_completed(session):
-    """Handle successful checkout - create customer and license if they don't exist, each subscription links to one license"""
+    """Handle successful checkout - create customer and license if they don't exist"""
     try:
+        import stripe as stripe_lib
+        stripe_config = load_stripe_settings()
+        stripe_lib.api_key = stripe_config['stripe_api_key']
+
+        session_id = session.get('id')
         subscription_id = session.get('subscription')
         customer_email = session.get('customer_email') or session.get('customer_details', {}).get('email')
         customer_name = session.get('customer_details', {}).get('name')
         metadata = session.get('metadata', {})
         license_id = metadata.get('license_id')
         customer_id = metadata.get('customer_id')
-        
-        if not subscription_id:
-            print("No subscription_id in checkout session")
-            return
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
         now = datetime.now().isoformat()
-        
+
         if not customer_id and customer_email:
             cursor.execute('SELECT id FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
             result = cursor.fetchone()
@@ -3023,127 +3066,208 @@ def _handle_checkout_completed(session):
                     VALUES (?, ?, ?, 'active', ?, ?)
                 ''', (customer_number, customer_name or customer_email, customer_email, now, now))
                 customer_id = cursor.lastrowid
-        
-        cursor.execute('''
-            SELECT id FROM customer_licenses WHERE stripe_subscription_id = ?
-        ''', (subscription_id,))
-        already_exists = cursor.fetchone()
-        
-        if already_exists:
-            print(f"License already exists for subscription {subscription_id}, skipping")
+
+        if not customer_id:
+            print("No customer_id and no email to create one")
             conn.close()
             return
-        
-        if license_id and license_id != 'pending':
-            import stripe as stripe_lib
-            stripe_config = load_stripe_settings()
-            stripe_lib.api_key = stripe_config['stripe_api_key']
+
+        if subscription_id:
+            cursor.execute('''
+                SELECT id FROM customer_licenses WHERE stripe_subscription_id = ?
+            ''', (subscription_id,))
+            already_exists = cursor.fetchone()
+            if already_exists:
+                print(f"License already exists for subscription {subscription_id}, skipping")
+                conn.close()
+                return
+
+        if subscription_id:
             subscription = stripe_lib.Subscription.retrieve(subscription_id)
-            current_period_end = subscription.current_period_end
-            expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
             price_id = subscription.items.data[0].price.id if subscription.items.data else ''
             interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
-            
-            interval_map = {'month': 'monthly', 'year': 'yearly'}
-            renewal_interval = interval_map.get(interval, 'yearly')
-            
-            cursor.execute('''
-                UPDATE customer_licenses 
-                SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
-                WHERE id = ?
-            ''', (subscription_id, expiry_date, price_id, renewal_interval, now, license_id))
-            
-            log_action('UPDATE', 'license', license_id, customer_name or customer_email,
-                      f'Subscription activated. New expiry: {expiry_date[:10]}', 'stripe_webhook')
-            
-            cursor.execute('''
-                SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
-                       c.name, c.email, c.customer_number
-                FROM customer_licenses cl
-                JOIN customers c ON cl.customer_id = c.id
-                WHERE cl.id = ?
-            ''', (license_id,))
-            lic_data = cursor.fetchone()
-            
-            if lic_data:
-                l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
-                _send_license_email(
-                    customer_email=c_email,
-                    customer_name=c_name,
-                    customer_number=c_number,
-                    license_key=l_key,
-                    expiry_date=l_expiry,
-                    status=l_status,
-                    mac_address=l_mac,
-                    auto_renew=bool(l_auto_renew),
-                    renewal_interval=l_interval,
-                    stripe_subscription_id=l_stripe_sub
-                )
-        elif customer_id:
-            import stripe as stripe_lib
-            stripe_config = load_stripe_settings()
-            stripe_lib.api_key = stripe_config['stripe_api_key']
-            subscription = stripe_lib.Subscription.retrieve(subscription_id)
             current_period_end = subscription.current_period_end
             expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
-            price_id = subscription.items.data[0].price.id if subscription.items.data else ''
-            interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
-            
+
             interval_map = {'month': 'monthly', 'year': 'yearly'}
             renewal_interval = interval_map.get(interval, 'yearly')
-            
-            license_key = generate_license_key()
-            
-            license_data = {
-                'customer_number': customer_id,
-                'customer_name': customer_name or '',
-                'expiry_date': expiry_date,
-                'features': ['full_access']
-            }
-            encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
-            
-            cursor.execute('''
-                INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'active', 1, ?, ?, ?, ?, ?)
-            ''', (customer_id, license_key, encrypted_data, expiry_date, subscription_id, price_id, renewal_interval, now, now))
-            license_id = cursor.lastrowid
-            
-            log_action('CREATE', 'license', license_id, customer_name or customer_email, 
-                      f'Auto-created from Stripe checkout. Expires: {expiry_date[:10]}', 'stripe_webhook')
-            
-            cursor.execute('''
-                SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
-                       c.name, c.email, c.customer_number
-                FROM customer_licenses cl
-                JOIN customers c ON cl.customer_id = c.id
-                WHERE cl.id = ?
-            ''', (license_id,))
-            lic_data = cursor.fetchone()
-            
-            if lic_data:
-                l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
-                _send_license_email(
-                    customer_email=c_email,
-                    customer_name=c_name,
-                    customer_number=c_number,
-                    license_key=l_key,
-                    expiry_date=l_expiry,
-                    status=l_status,
-                    mac_address=l_mac,
-                    auto_renew=bool(l_auto_renew),
-                    renewal_interval=l_interval,
-                    stripe_subscription_id=l_stripe_sub
-                )
-        
+
+            tier_type = 'yearly'
+            display_name = 'Subscription'
+            if price_id:
+                cursor.execute('SELECT tier_type, display_name FROM stripe_prices WHERE stripe_price_id = ? AND active = 1', (price_id,))
+                tier_row = cursor.fetchone()
+                if tier_row:
+                    tier_type = tier_row[0]
+                    display_name = tier_row[1] or tier_type.title()
+                else:
+                    cursor.execute('INSERT INTO stripe_prices (stripe_price_id, tier_type, display_name, amount_cents, created_at) VALUES (?, ?, ?, ?, ?)',
+                                   (price_id, tier_type, display_name, subscription.items.data[0].price.unit_amount if subscription.items.data else 0, now))
+
+            if license_id and license_id != 'pending':
+                cursor.execute('''
+                    UPDATE customer_licenses
+                    SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (subscription_id, expiry_date, price_id, renewal_interval, now, license_id))
+
+                log_action('UPDATE', 'license', license_id, customer_name or customer_email,
+                          f'{display_name} activated. New expiry: {expiry_date[:10]}', 'stripe_webhook')
+
+                cursor.execute('''
+                    SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
+                           c.name, c.email, c.customer_number
+                    FROM customer_licenses cl
+                    JOIN customers c ON cl.customer_id = c.id
+                    WHERE cl.id = ?
+                ''', (license_id,))
+                lic_data = cursor.fetchone()
+
+                if lic_data:
+                    l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
+                    _send_license_email(
+                        customer_email=c_email, customer_name=c_name, customer_number=c_number,
+                        license_key=l_key, expiry_date=l_expiry, status=l_status,
+                        mac_address=l_mac, auto_renew=bool(l_auto_renew), renewal_interval=l_interval,
+                        stripe_subscription_id=l_stripe_sub, tier_type=tier_type, display_name=display_name
+                    )
+            elif customer_id:
+                license_key = generate_license_key()
+                license_data = {
+                    'customer_number': customer_id,
+                    'customer_name': customer_name or '',
+                    'expiry_date': expiry_date,
+                    'features': ['full_access']
+                }
+                encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
+
+                cursor.execute('''
+                    INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 'active', 1, ?, ?, ?, ?, ?)
+                ''', (customer_id, license_key, encrypted_data, expiry_date, subscription_id, price_id, renewal_interval, now, now))
+                license_id = cursor.lastrowid
+
+                log_action('CREATE', 'license', license_id, customer_name or customer_email,
+                          f'Auto-created from Stripe {display_name}. Expires: {expiry_date[:10]}', 'stripe_webhook')
+
+                cursor.execute('''
+                    SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
+                           c.name, c.email, c.customer_number
+                    FROM customer_licenses cl
+                    JOIN customers c ON cl.customer_id = c.id
+                    WHERE cl.id = ?
+                ''', (license_id,))
+                lic_data = cursor.fetchone()
+
+                if lic_data:
+                    l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
+                    _send_license_email(
+                        customer_email=c_email, customer_name=c_name, customer_number=c_number,
+                        license_key=l_key, expiry_date=l_expiry, status=l_status,
+                        mac_address=l_mac, auto_renew=bool(l_auto_renew), renewal_interval=l_interval,
+                        stripe_subscription_id=l_stripe_sub, tier_type=tier_type, display_name=display_name
+                    )
+        else:
+            line_items = session.get('line_items', {})
+            if isinstance(line_items, dict) and 'data' in line_items:
+                items_data = line_items['data']
+            elif isinstance(line_items, list):
+                items_data = line_items
+            else:
+                items_data = []
+
+            if not items_data:
+                try:
+                    line_items_obj = stripe_lib.checkout.Session.list_line_items(session_id)
+                    items_data = line_items_obj.data if hasattr(line_items_obj, 'data') else []
+                except Exception as e:
+                    print(f"Could not fetch line items for session {session_id}: {e}")
+                    conn.close()
+                    return
+
+            for item in items_data:
+                price_id = item.get('price', {}).get('id') if isinstance(item, dict) else (getattr(item.price, 'id', None) if hasattr(item, 'price') else None)
+                if not price_id:
+                    continue
+
+                cursor.execute('''
+                    SELECT id FROM customer_licenses WHERE stripe_price_id = ? AND customer_id = ?
+                ''', (price_id, customer_id))
+                already_exists = cursor.fetchone()
+                if already_exists:
+                    print(f"License already exists for price {price_id} and customer {customer_id}, skipping")
+                    continue
+
+                cursor.execute('SELECT tier_type, display_name FROM stripe_prices WHERE stripe_price_id = ? AND active = 1', (price_id,))
+                tier_row = cursor.fetchone()
+                if tier_row:
+                    tier_type = tier_row[0]
+                    display_name = tier_row[1] or tier_row[0].title()
+                else:
+                    tier_type = 'perpetual'
+                    display_name = 'Perpetual License'
+                    amount = item.get('amount_total', 0) if isinstance(item, dict) else getattr(item, 'amount_total', 0)
+                    if not amount:
+                        amount = item.get('price', {}).get('unit_amount', 0) if isinstance(item, dict) else (getattr(item.price, 'unit_amount', 0) if hasattr(item, 'price') else 0)
+                    cursor.execute('INSERT INTO stripe_prices (stripe_price_id, tier_type, display_name, amount_cents, created_at) VALUES (?, ?, ?, ?, ?)',
+                                   (price_id, tier_type, display_name, amount, now))
+
+                if tier_type == 'perpetual':
+                    expiry_date = '2099-12-31T23:59:59'
+                    renewal_interval = 'perpetual'
+                    auto_renew = 0
+                    stripe_sub_id = None
+                else:
+                    expiry_date = (datetime.now() + (timedelta(days=30) if tier_type == 'monthly' else timedelta(days=365))).isoformat()
+                    renewal_interval = tier_type
+                    auto_renew = 0
+                    stripe_sub_id = None
+
+                license_key = generate_license_key()
+                license_data = {
+                    'customer_number': customer_id,
+                    'customer_name': customer_name or '',
+                    'expiry_date': expiry_date,
+                    'features': ['full_access']
+                }
+                encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
+
+                cursor.execute('''
+                    INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
+                ''', (customer_id, license_key, encrypted_data, expiry_date, auto_renew, stripe_sub_id, price_id, renewal_interval, now, now))
+                new_license_id = cursor.lastrowid
+
+                log_action('CREATE', 'license', new_license_id, customer_name or customer_email,
+                          f'Auto-created from Stripe payment: {display_name}', 'stripe_webhook')
+
+                cursor.execute('''
+                    SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
+                           c.name, c.email, c.customer_number
+                    FROM customer_licenses cl
+                    JOIN customers c ON cl.customer_id = c.id
+                    WHERE cl.id = ?
+                ''', (new_license_id,))
+                lic_data = cursor.fetchone()
+
+                if lic_data:
+                    l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
+                    _send_license_email(
+                        customer_email=c_email, customer_name=c_name, customer_number=c_number,
+                        license_key=l_key, expiry_date=l_expiry, status=l_status,
+                        mac_address=l_mac, auto_renew=bool(l_auto_renew), renewal_interval=l_interval,
+                        stripe_subscription_id=l_stripe_sub, tier_type=tier_type, display_name=display_name
+                    )
+
         if customer_id:
             cursor.execute('''
                 UPDATE customers SET status = 'active', updated_at = ?
                 WHERE id = ?
             ''', (now, customer_id))
-        
+
         conn.commit()
         conn.close()
-        
+
     except Exception as e:
         print(f"Error handling checkout.completed: {e}")
 
@@ -3380,6 +3504,13 @@ def _handle_payment_succeeded(invoice):
                 if license_result:
                     license_id, customer_id = license_result
                     
+                    cursor.execute('SELECT renewal_interval FROM customer_licenses WHERE id = ?', (license_id,))
+                    lic_row = cursor.fetchone()
+                    if lic_row and lic_row[0] == 'perpetual':
+                        print(f"Skipping payment.succeeded for perpetual license {license_id}")
+                        conn.close()
+                        return
+                    
                     cursor.execute('''
                         UPDATE customer_licenses 
                         SET expiry_date = ?, status = 'active', updated_at = ?
@@ -3513,6 +3644,83 @@ def stripe_settings():
         return jsonify({'success': True, 'message': 'Stripe settings saved'})
     else:
         return jsonify({'success': False, 'error': 'Failed to save settings'})
+
+
+@app.route('/api/stripe/prices', methods=['GET', 'POST'])
+@login_required
+def stripe_prices_management():
+    """Get or create Stripe price mappings"""
+    if request.method == 'GET':
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT stripe_price_id, tier_type, display_name, amount_cents, active, created_at FROM stripe_prices ORDER BY created_at DESC')
+        rows = cursor.fetchall()
+        conn.close()
+        return jsonify({
+            'success': True,
+            'prices': [
+                {
+                    'stripe_price_id': r[0],
+                    'tier_type': r[1],
+                    'display_name': r[2],
+                    'amount_cents': r[3],
+                    'active': bool(r[4]),
+                    'created_at': r[5]
+                }
+                for r in rows
+            ]
+        })
+
+    data = request.get_json()
+    price_id = data.get('stripe_price_id', '').strip()
+    tier_type = data.get('tier_type', '').strip()
+    display_name = data.get('display_name', '').strip()
+
+    if not price_id:
+        return jsonify({'success': False, 'error': 'Stripe Price ID is required'}), 400
+
+    if not tier_type or tier_type not in ('monthly', 'yearly', 'perpetual'):
+        return jsonify({'success': False, 'error': 'Tier type must be monthly, yearly, or perpetual'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+
+    cursor.execute('SELECT 1 FROM stripe_prices WHERE stripe_price_id = ?', (price_id,))
+    exists = cursor.fetchone()
+    if exists:
+        cursor.execute('''
+            UPDATE stripe_prices SET tier_type = ?, display_name = ?, active = 1, updated_at = ?
+            WHERE stripe_price_id = ?
+        ''', (tier_type, display_name or tier_type.title(), now, price_id))
+    else:
+        amount = data.get('amount_cents', 0)
+        cursor.execute('''
+            INSERT INTO stripe_prices (stripe_price_id, tier_type, display_name, amount_cents, active, created_at)
+            VALUES (?, ?, ?, ?, 1, ?)
+        ''', (price_id, tier_type, display_name or tier_type.title(), amount, now))
+
+    conn.commit()
+    conn.close()
+    log_action('CREATE' if not exists else 'UPDATE', 'stripe_price', price_id, None,
+              f'Mapped to {tier_type}: {display_name}', session.get('username', 'system'))
+    return jsonify({'success': True, 'message': 'Price mapping saved'})
+
+
+@app.route('/api/stripe/prices/<price_id>', methods=['DELETE'])
+@login_required
+def delete_stripe_price(price_id):
+    """Deactivate a Stripe price mapping"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE stripe_prices SET active = 0 WHERE stripe_price_id = ?', (price_id,))
+    deleted = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+    if deleted:
+        log_action('DELETE', 'stripe_price', price_id, None, 'Price mapping deactivated', session.get('username', 'system'))
+        return jsonify({'success': True, 'message': 'Price mapping removed'})
+    return jsonify({'success': False, 'error': 'Price ID not found'}), 404
 
 
 @app.route('/api/stripe/create-checkout', methods=['POST'])

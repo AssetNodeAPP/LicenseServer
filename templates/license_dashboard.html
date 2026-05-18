@@ -598,10 +598,13 @@
                                         </div>
                                         <div class="form-text mt-2">
                                             <i class="bi bi-info-circle"></i> Add this URL to your Stripe webhook endpoints for: 
+                                            <code>checkout.session.completed</code>,
                                             <code>customer.subscription.updated</code>, 
                                             <code>customer.subscription.deleted</code>,
                                             <code>invoice.payment_succeeded</code>,
-                                            <code>invoice.payment_failed</code>
+                                            <code>invoice.payment_failed</code>,
+                                            <code>customer.created</code>,
+                                            <code>customer.updated</code>
                                         </div>
                                     </div>
                                 </div>
@@ -616,11 +619,43 @@
                                             <li>Go to <a href="https://dashboard.stripe.com/webhooks" target="_blank">Stripe Webhooks</a></li>
                                             <li>Add a new webhook endpoint</li>
                                             <li>Set URL to: <code id="webhookUrlHelp">https://your-domain.com/api/stripe/webhook</code></li>
-                                            <li>Select events: <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.payment_succeeded</code>, <code>invoice.payment_failed</code></li>
+                                            <li>Select events: <code>checkout.session.completed</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>, <code>invoice.payment_succeeded</code>, <code>invoice.payment_failed</code>, <code>customer.created</code>, <code>customer.updated</code></li>
                                             <li>Copy the signing secret and paste above</li>
                                         </ol>
                                         <hr>
                                         <p class="text-muted small">When a subscription is updated, renewed, or cancelled in Stripe, the license status will be automatically synchronized. Auto-renewal licenses will create Stripe checkout sessions for payment.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5 class="card-title mb-0"><i class="bi bi-tags"></i> Stripe Price Mappings</h5>
+                                            <button class="btn btn-sm btn-primary" onclick="showAddPriceModal()">
+                                                <i class="bi bi-plus-lg"></i> Add Price
+                                            </button>
+                                        </div>
+                                        <p class="text-muted small mb-3">Map your Stripe Payment Link Price IDs to license types. When a customer purchases through a Payment Link, the app detects the Price ID and creates the correct license.</p>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Price ID</th>
+                                                        <th>Type</th>
+                                                        <th>Display Name</th>
+                                                        <th>Amount</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="stripePricesTable">
+                                                    <tr><td colspan="5" class="text-center text-muted py-4">Loading...</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -945,6 +980,7 @@
             loadSmtpSettings();
             refreshCustomers();
             loadStripeSettings();
+            loadStripePrices();
             
             document.getElementById('webhookUrl').value = window.location.origin + '/api/stripe/webhook';
             document.getElementById('webhookUrlHelp').textContent = window.location.origin + '/api/stripe/webhook';
@@ -1120,6 +1156,90 @@
                 setTimeout(() => statusEl.innerHTML = '', 3000);
             } catch (e) {
                 document.getElementById('stripeSaveStatus').innerHTML = '<div class="alert alert-danger py-2"><i class="bi bi-x-circle"></i> ' + e.message + '</div>';
+            }
+        }
+        
+        async function loadStripePrices() {
+            try {
+                const response = await fetch('/api/stripe/prices');
+                const data = await response.json();
+                const tbody = document.getElementById('stripePricesTable');
+                tbody.innerHTML = '';
+                
+                if (!data.prices || data.prices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No price mappings configured</td></tr>';
+                    return;
+                }
+                
+                data.prices.forEach(function(p) {
+                    var typeBadge = p.tier_type === 'monthly' ? 'bg-success' : p.tier_type === 'yearly' ? 'bg-primary' : 'bg-secondary';
+                    var amountDisplay = p.amount_cents ? '$' + (p.amount_cents / 100).toFixed(2) : '-';
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td><code class="small">' + p.stripe_price_id + '</code></td>' +
+                        '<td><span class="badge ' + typeBadge + '">' + p.tier_type + '</span></td>' +
+                        '<td>' + (p.display_name || '-') + '</td>' +
+                        '<td>' + amountDisplay + '</td>' +
+                        '<td><button class="btn btn-sm btn-outline-danger" onclick="deleteStripePrice(\'' + p.stripe_price_id + '\')"><i class="bi bi-trash"></i></button></td>';
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error('Error loading stripe prices:', e);
+            }
+        }
+        
+        function showAddPriceModal() {
+            var priceId = prompt('Enter Stripe Price ID (e.g., price_1NzX...):');
+            if (!priceId) return;
+            
+            var tierType = prompt('Enter tier type (monthly, yearly, or perpetual):', 'perpetual');
+            if (!tierType || ['monthly', 'yearly', 'perpetual'].indexOf(tierType) === -1) {
+                alert('Tier type must be monthly, yearly, or perpetual');
+                return;
+            }
+            
+            var displayName = prompt('Enter display name (e.g., "Pro Monthly"):') || tierType.charAt(0).toUpperCase() + tierType.slice(1);
+            
+            saveStripePrice(priceId.trim(), tierType, displayName);
+        }
+        
+        async function saveStripePrice(priceId, tierType, displayName) {
+            try {
+                const response = await fetch('/api/stripe/prices', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        stripe_price_id: priceId,
+                        tier_type: tierType,
+                        display_name: displayName
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Price mapping saved!');
+                    loadStripePrices();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error saving price mapping: ' + e.message);
+            }
+        }
+        
+        async function deleteStripePrice(priceId) {
+            if (!confirm('Remove this price mapping? Existing licenses won\'t be affected.')) return;
+            
+            try {
+                const response = await fetch('/api/stripe/prices/' + encodeURIComponent(priceId), {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    loadStripePrices();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error deleting price mapping: ' + e.message);
             }
         }
         

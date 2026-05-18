@@ -24,6 +24,8 @@ def _get_data_dir():
         else:
             exe_dir = os.path.dirname(os.path.realpath(sys.executable))
         return os.path.join(exe_dir, "data")
+    if sys.platform.startswith("linux"):
+        return os.path.join(os.path.expanduser("~"), "Documents")
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 DATA_DIR = _get_data_dir()
