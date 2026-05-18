@@ -18,7 +18,12 @@ def _get_data_dir():
     if env_dir:
         return env_dir
     if getattr(sys, 'frozen', False):
-        return os.path.join(os.path.dirname(sys.executable), "data")
+        # PyInstaller onefile: sys.executable is /tmp/_MEIxxx, use the real exe path
+        if hasattr(sys, '_MEIPASS'):
+            exe_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+        else:
+            exe_dir = os.path.dirname(os.path.realpath(sys.executable))
+        return os.path.join(exe_dir, "data")
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 DATA_DIR = _get_data_dir()
