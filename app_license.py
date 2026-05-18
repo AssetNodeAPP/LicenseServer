@@ -2681,7 +2681,7 @@ def stripe_checkout_success():
 
 @app.route('/api/stripe/webhook', methods=['POST'])
 def stripe_webhook():
-    """Handle Stripe webhook events for subscription updates and auto-renewals"""
+    """Handle Stripe webhook events for automated customer and license lifecycle management"""
     try:
         stripe_config = load_stripe_settings()
         if not stripe_config or not stripe_config.get('stripe_api_key'):
@@ -2692,99 +2692,340 @@ def stripe_webhook():
         webhook_secret = stripe_config.get('stripe_webhook_secret', '')
         
         try:
-            event = json.loads(payload)
-        except:
-            return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
-        
-        event_type = event.get('type', '')
-        
-        if event_type == 'customer.subscription.updated':
-            subscription = event.get('data', {}).get('object', {})
-            subscription_id = subscription.get('id', '')
-            status = subscription.get('status', '')
-            current_period_end = subscription.get('current_period_end', 0)
+            import stripe as stripe_lib
+            stripe_lib.api_key = stripe_config['stripe_api_key']
             
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            our_status = 'active'
-            if status in ['past_due', 'unpaid']:
-                our_status = 'suspended'
-            elif status in ['canceled', 'unfunded']:
-                our_status = 'cancelled'
+            if webhook_secret and signature:
+                event = stripe_lib.Webhook.construct_event(payload, signature, webhook_secret)
+                event_type = event.type
+                event_data = event.data.object
+            else:
+                event = json.loads(payload)
+                event_type = event.get('type', '')
+                event_data = event.get('data', {}).get('object', {})
+        except Exception as e:
+            print(f"Webhook verification error: {e}")
+            return jsonify({'success': False, 'error': 'Invalid webhook signature'}), 400
+        
+        if event_type == 'checkout.session.completed':
+            _handle_checkout_completed(event_data)
+        
+        elif event_type == 'customer.subscription.created':
+            _handle_subscription_created(event_data)
+        
+        elif event_type == 'customer.subscription.updated':
+            _handle_subscription_updated(event_data)
+        
+        elif event_type == 'customer.subscription.deleted':
+            _handle_subscription_deleted(event_data)
+        
+        elif event_type == 'invoice.payment_succeeded':
+            _handle_payment_succeeded(event_data)
+        
+        elif event_type == 'invoice.payment_failed':
+            _handle_payment_failed(event_data)
+        
+        elif event_type == 'customer.created':
+            _handle_customer_created(event_data)
+        
+        elif event_type == 'customer.updated':
+            _handle_customer_updated(event_data)
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _handle_checkout_completed(session):
+    """Handle successful checkout - create customer and license if they don't exist, each subscription links to one license"""
+    try:
+        subscription_id = session.get('subscription')
+        customer_email = session.get('customer_email') or session.get('customer_details', {}).get('email')
+        customer_name = session.get('customer_details', {}).get('name')
+        metadata = session.get('metadata', {})
+        license_id = metadata.get('license_id')
+        customer_id = metadata.get('customer_id')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        if not customer_id and customer_email:
+            cursor.execute('SELECT id FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
+            result = cursor.fetchone()
+            if result:
+                customer_id = result[0]
+            else:
+                customer_number = generate_customer_number()
+                cursor.execute('''
+                    INSERT INTO customers (customer_number, name, email, status, created_at, updated_at)
+                    VALUES (?, ?, ?, 'active', ?, ?)
+                ''', (customer_number, customer_name or customer_email, customer_email, now, now))
+                customer_id = cursor.lastrowid
+        
+        if license_id and license_id != 'pending':
+            if subscription_id:
+                import stripe as stripe_lib
+                stripe_config = load_stripe_settings()
+                stripe_lib.api_key = stripe_config['stripe_api_key']
+                subscription = stripe_lib.Subscription.retrieve(subscription_id)
+                current_period_end = subscription.current_period_end
+                expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
+                price_id = subscription.items.data[0].price.id if subscription.items.data else ''
+                interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
+                
+                interval_map = {'month': 'monthly', 'year': 'yearly'}
+                renewal_interval = interval_map.get(interval, 'yearly')
+                
+                cursor.execute('''
+                    UPDATE customer_licenses 
+                    SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (subscription_id, expiry_date, price_id, renewal_interval, now, license_id))
+                
+                log_action('UPDATE', 'license', license_id, customer_name or customer_email,
+                          f'Subscription activated. New expiry: {expiry_date[:10]}', 'stripe_webhook')
+        elif customer_id:
+            license_key = generate_license_key()
             
             if subscription_id:
+                import stripe as stripe_lib
+                stripe_config = load_stripe_settings()
+                stripe_lib.api_key = stripe_config['stripe_api_key']
+                subscription = stripe_lib.Subscription.retrieve(subscription_id)
+                current_period_end = subscription.current_period_end
+                expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
+                price_id = subscription.items.data[0].price.id if subscription.items.data else ''
+                interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
+                
+                interval_map = {'month': 'monthly', 'year': 'yearly'}
+                renewal_interval = interval_map.get(interval, 'yearly')
+            else:
+                expiry_date = (datetime.now() + timedelta(days=365)).isoformat()
+                price_id = ''
+                renewal_interval = 'yearly'
+            
+            license_data = {
+                'customer_number': customer_id,
+                'customer_name': customer_name or '',
+                'expiry_date': expiry_date,
+                'features': ['full_access']
+            }
+            encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
+            
+            cursor.execute('''
+                INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'active', 1, ?, ?, ?, ?, ?)
+            ''', (customer_id, license_key, encrypted_data, expiry_date, subscription_id, price_id, renewal_interval, now, now))
+            license_id = cursor.lastrowid
+            
+            log_action('CREATE', 'license', license_id, customer_name or customer_email, 
+                      f'Auto-created from Stripe checkout. Expires: {expiry_date[:10]}', 'stripe_webhook')
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error handling checkout.completed: {e}")
+
+
+def _handle_subscription_created(subscription):
+    """Handle new subscription creation - only affects the specific license linked to this subscription"""
+    try:
+        subscription_id = subscription.id
+        status = subscription.status
+        current_period_end = subscription.current_period_end
+        expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
+        
+        metadata = subscription.metadata or {}
+        license_id = metadata.get('license_id')
+        customer_id = metadata.get('customer_id')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        price_id = subscription.items.data[0].price.id if subscription.items.data else ''
+        interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
+        interval_map = {'month': 'monthly', 'year': 'yearly'}
+        renewal_interval = interval_map.get(interval, 'yearly')
+        
+        if license_id:
+            cursor.execute('''
+                UPDATE customer_licenses 
+                SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
+                WHERE id = ?
+            ''', (subscription_id, expiry_date, price_id, renewal_interval, now, license_id))
+            
+            if cursor.rowcount > 0:
+                cursor.execute('SELECT customer_id FROM customer_licenses WHERE id = ?', (license_id,))
+                result = cursor.fetchone()
+                if result:
+                    customer_id = result[0]
+                
+                log_action('UPDATE', 'license', license_id, None,
+                          f'Subscription created. Expires: {expiry_date[:10]}', 'stripe_webhook')
+        elif customer_id:
+            cursor.execute('SELECT id FROM customer_licenses WHERE customer_id = ? AND stripe_subscription_id IS NULL LIMIT 1', (customer_id,))
+            existing_license = cursor.fetchone()
+            
+            if existing_license:
+                license_id = existing_license[0]
+                license_key = generate_license_key()
+                
+                license_data = {
+                    'customer_number': customer_id,
+                    'customer_name': '',
+                    'expiry_date': expiry_date,
+                    'features': ['full_access']
+                }
+                encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
+                
+                cursor.execute('''
+                    INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, 'active', 1, ?, ?, ?, ?, ?)
+                ''', (customer_id, license_key, encrypted_data, expiry_date, subscription_id, price_id, renewal_interval, now, now))
+                
+                log_action('CREATE', 'license', cursor.lastrowid, None,
+                          f'Auto-created from subscription. Expires: {expiry_date[:10]}', 'stripe_webhook')
+        
+        if customer_id:
+            cursor.execute('''
+                UPDATE customers SET status = 'active', updated_at = ?
+                WHERE id = ?
+            ''', (now, customer_id))
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error handling subscription.created: {e}")
+
+
+def _handle_subscription_updated(subscription):
+    """Handle subscription updates - only affects the specific license linked to this subscription"""
+    try:
+        subscription_id = subscription.id
+        status = subscription.status
+        current_period_end = subscription.current_period_end
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        our_status = 'active'
+        if status in ['past_due', 'unpaid']:
+            our_status = 'suspended'
+        elif status in ['canceled', 'unfunded']:
+            our_status = 'cancelled'
+        
+        cursor.execute('''
+            SELECT id, customer_id FROM customer_licenses WHERE stripe_subscription_id = ?
+        ''', (subscription_id,))
+        license_result = cursor.fetchone()
+        
+        if license_result:
+            license_id, customer_id = license_result
+            
+            if current_period_end:
+                new_expiry = datetime.fromtimestamp(current_period_end).isoformat()
+                cursor.execute('''
+                    UPDATE customer_licenses 
+                    SET status = ?, expiry_date = ?, updated_at = ?
+                    WHERE stripe_subscription_id = ?
+                ''', (our_status, new_expiry, now, subscription_id))
+                
+                log_action('UPDATE', 'license', license_id, None,
+                          f'Subscription updated: status={our_status}, expiry={new_expiry[:10]}',
+                          'stripe_webhook')
+            else:
                 cursor.execute('''
                     UPDATE customer_licenses SET status = ?, updated_at = ?
                     WHERE stripe_subscription_id = ?
-                ''', (our_status, datetime.now().isoformat(), subscription_id))
-                
-                if current_period_end and our_status == 'active':
-                    new_expiry = datetime.fromtimestamp(current_period_end).isoformat()
-                    cursor.execute('''
-                        UPDATE customer_licenses SET expiry_date = ?, updated_at = ?
-                        WHERE stripe_subscription_id = ?
-                    ''', (new_expiry, datetime.now().isoformat(), subscription_id))
+                ''', (our_status, now, subscription_id))
             
-            customer_email = subscription.get('customer_email', '')
-            if customer_email and cursor.rowcount == 0:
+            if customer_id:
                 cursor.execute('''
-                    UPDATE customers SET status = ?, updated_at = ? WHERE LOWER(email) = LOWER(?)
-                ''', (our_status, datetime.now().isoformat(), customer_email))
-                
-                if cursor.rowcount > 0:
-                    cursor.execute('''
-                        UPDATE customer_licenses SET status = ?, updated_at = ?
-                        WHERE customer_id = (SELECT id FROM customers WHERE LOWER(email) = LOWER(?))
-                    ''', (our_status, datetime.now().isoformat(), customer_email))
-            
-            conn.commit()
-            conn.close()
+                    UPDATE customers SET status = ?, updated_at = ? WHERE id = ?
+                ''', (our_status, now, customer_id))
+        else:
+            print(f"No license found for subscription {subscription_id}")
         
-        elif event_type == 'customer.subscription.deleted':
-            subscription = event.get('data', {}).get('object', {})
-            subscription_id = subscription.get('id', '')
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error handling subscription.updated: {e}")
+
+
+def _handle_subscription_deleted(subscription):
+    """Handle subscription cancellation - only cancels the specific license linked to this subscription"""
+    try:
+        subscription_id = subscription.id
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        cursor.execute('''
+            SELECT id, customer_id FROM customer_licenses WHERE stripe_subscription_id = ?
+        ''', (subscription_id,))
+        license_result = cursor.fetchone()
+        
+        if license_result:
+            license_id, customer_id = license_result
             
+            cursor.execute('''
+                UPDATE customer_licenses SET status = 'cancelled', auto_renew = 0, updated_at = ?
+                WHERE stripe_subscription_id = ?
+            ''', (now, subscription_id))
+            
+            log_action('CANCEL', 'license', license_id, None,
+                      f'Subscription {subscription_id} deleted, license cancelled', 'stripe_webhook')
+            
+            if customer_id:
+                cursor.execute('''
+                    SELECT COUNT(*) FROM customer_licenses WHERE customer_id = ? AND status != 'cancelled'
+                ''', (customer_id,))
+                active_licenses = cursor.fetchone()[0]
+                
+                if active_licenses == 0:
+                    cursor.execute('''
+                        UPDATE customers SET status = 'cancelled', updated_at = ? WHERE id = ?
+                    ''', (now, customer_id))
+        else:
+            print(f"No license found for deleted subscription {subscription_id}")
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error handling subscription.deleted: {e}")
+
+
+def _handle_payment_succeeded(invoice):
+    """Handle successful payment - only extends the specific license linked to this subscription"""
+    try:
+        subscription_id = invoice.get('subscription', '')
+        
+        if subscription_id:
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            now = datetime.now().isoformat()
-            
-            if subscription_id:
-                cursor.execute('''
-                    UPDATE customer_licenses SET status = 'cancelled', auto_renew = 0, updated_at = ?
-                    WHERE stripe_subscription_id = ?
-                ''', (now, subscription_id))
-            
-            customer_email = subscription.get('customer_email', '')
-            if customer_email and cursor.rowcount == 0:
-                cursor.execute('''
-                    UPDATE customers SET status = 'cancelled', updated_at = ? WHERE LOWER(email) = LOWER(?)
-                ''', (now, customer_email))
-                cursor.execute('''
-                    UPDATE customer_licenses SET status = 'cancelled', auto_renew = 0, updated_at = ?
-                    WHERE customer_id = (SELECT id FROM customers WHERE LOWER(email) = LOWER(?))
-                ''', (now, customer_email))
-                cursor.execute('''
-                    DELETE FROM license_sessions 
-                    WHERE customer_id = (SELECT id FROM customers WHERE LOWER(email) = LOWER(?))
-                ''', (customer_email,))
-            
-            conn.commit()
-            conn.close()
-        
-        elif event_type == 'invoice.payment_succeeded':
-            invoice = event.get('data', {}).get('object', {})
-            subscription_id = invoice.get('subscription', '')
-            
-            if subscription_id:
-                conn = get_db_connection()
-                cursor = conn.cursor()
+            period_end = invoice.get('lines', {}).get('data', [{}])[0].get('period', {}).get('end', 0)
+            if period_end:
+                new_expiry = datetime.fromtimestamp(period_end).isoformat()
+                now = datetime.now().isoformat()
                 
-                period_end = invoice.get('lines', {}).get('data', [{}])[0].get('period', {}).get('end', 0)
-                if period_end:
-                    new_expiry = datetime.fromtimestamp(period_end).isoformat()
-                    now = datetime.now().isoformat()
+                cursor.execute('''
+                    SELECT id, customer_id FROM customer_licenses WHERE stripe_subscription_id = ?
+                ''', (subscription_id,))
+                license_result = cursor.fetchone()
+                
+                if license_result:
+                    license_id, customer_id = license_result
                     
                     cursor.execute('''
                         UPDATE customer_licenses 
@@ -2792,31 +3033,110 @@ def stripe_webhook():
                         WHERE stripe_subscription_id = ?
                     ''', (new_expiry, now, subscription_id))
                     
-                    conn.commit()
-                
-                conn.close()
-        
-        elif event_type == 'invoice.payment_failed':
-            invoice = event.get('data', {}).get('object', {})
-            subscription_id = invoice.get('subscription', '')
+                    log_action('RENEW', 'license', license_id, None,
+                              f'Payment succeeded, extended to {new_expiry[:10]}', 'stripe_webhook')
             
-            if subscription_id:
-                conn = get_db_connection()
-                cursor = conn.cursor()
+            conn.commit()
+            conn.close()
+        
+    except Exception as e:
+        print(f"Error handling payment.succeeded: {e}")
+
+
+def _handle_payment_failed(invoice):
+    """Handle failed payment - only suspends the specific license linked to this subscription"""
+    try:
+        subscription_id = invoice.get('subscription', '')
+        
+        if subscription_id:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            now = datetime.now().isoformat()
+            
+            cursor.execute('''
+                SELECT id, customer_id FROM customer_licenses WHERE stripe_subscription_id = ?
+            ''', (subscription_id,))
+            license_result = cursor.fetchone()
+            
+            if license_result:
+                license_id, customer_id = license_result
                 
-                now = datetime.now().isoformat()
                 cursor.execute('''
                     UPDATE customer_licenses SET status = 'suspended', updated_at = ?
                     WHERE stripe_subscription_id = ?
                 ''', (now, subscription_id))
                 
-                conn.commit()
-                conn.close()
-        
-        return jsonify({'success': True})
+                log_action('SUSPEND', 'license', license_id, None,
+                          'Payment failed, license suspended', 'stripe_webhook')
+            
+            conn.commit()
+            conn.close()
         
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"Error handling payment.failed: {e}")
+
+
+def _handle_customer_created(customer):
+    """Handle new customer creation in Stripe"""
+    try:
+        customer_id_stripe = customer.id
+        customer_email = customer.email
+        customer_name = customer.name or customer_email
+        
+        if not customer_email:
+            return
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        cursor.execute('SELECT id FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
+        result = cursor.fetchone()
+        
+        if not result:
+            customer_number = generate_customer_number()
+            cursor.execute('''
+                INSERT INTO customers (customer_number, name, email, status, created_at, updated_at)
+                VALUES (?, ?, ?, 'active', ?, ?)
+            ''', (customer_number, customer_name, customer_email, now, now))
+            
+            log_action('CREATE', 'customer', cursor.lastrowid, customer_name,
+                      f'Auto-created from Stripe. Email: {customer_email}', 'stripe_webhook')
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error handling customer.created: {e}")
+
+
+def _handle_customer_updated(customer):
+    """Handle customer updates in Stripe"""
+    try:
+        customer_email = customer.email
+        customer_name = customer.name or customer_email
+        
+        if not customer_email:
+            return
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        cursor.execute('''
+            UPDATE customers SET name = ?, updated_at = ? WHERE LOWER(email) = LOWER(?)
+        ''', (customer_name, now, customer_email))
+        
+        if cursor.rowcount > 0:
+            log_action('UPDATE', 'customer', None, customer_name,
+                      f'Updated from Stripe', 'stripe_webhook')
+        
+        conn.commit()
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error handling customer.updated: {e}")
 
 
 @app.route('/api/settings/stripe', methods=['GET', 'POST'])
@@ -2840,6 +3160,461 @@ def stripe_settings():
         return jsonify({'success': True, 'message': 'Stripe settings saved'})
     else:
         return jsonify({'success': False, 'error': 'Failed to save settings'})
+
+
+@app.route('/api/stripe/create-checkout', methods=['POST'])
+@login_required
+def create_stripe_checkout():
+    """Create a Stripe Checkout session for a new or existing customer/license"""
+    try:
+        data = request.get_json()
+        
+        customer_name = data.get('customer_name', '').strip()
+        customer_email = data.get('customer_email', '').strip()
+        license_id = data.get('license_id')
+        customer_id = data.get('customer_id')
+        amount = data.get('amount', 0)
+        currency = data.get('currency', 'usd')
+        renewal_interval = data.get('renewal_interval', 'yearly')
+        product_name = data.get('product_name', 'License Subscription')
+        success_url = data.get('success_url', '')
+        cancel_url = data.get('cancel_url', '')
+        
+        if not customer_email:
+            return jsonify({'success': False, 'error': 'Customer email is required'}), 400
+        
+        if not amount or amount <= 0:
+            return jsonify({'success': False, 'error': 'Valid amount is required'}), 400
+        
+        stripe_config = load_stripe_settings()
+        if not stripe_config or not stripe_config.get('stripe_api_key'):
+            return jsonify({'success': False, 'error': 'Stripe not configured'}), 400
+        
+        import stripe as stripe_lib
+        stripe_lib.api_key = stripe_config['stripe_api_key']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        if not customer_id and customer_email:
+            cursor.execute('SELECT id, name FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
+            existing = cursor.fetchone()
+            if existing:
+                customer_id = existing[0]
+                customer_name = customer_name or existing[1]
+            else:
+                customer_number = generate_customer_number()
+                cursor.execute('''
+                    INSERT INTO customers (customer_number, name, email, status, created_at, updated_at)
+                    VALUES (?, ?, ?, 'active', ?, ?)
+                ''', (customer_number, customer_name, customer_email, now, now))
+                customer_id = cursor.lastrowid
+                log_action('CREATE', 'customer', customer_id, customer_name,
+                          f'Created for Stripe checkout. Email: {customer_email}', session.get('username', 'system'))
+        
+        stripe_customer_id = None
+        customer_result = stripe_lib.Customer.list(email=customer_email, limit=1)
+        if customer_result and customer_result.data:
+            stripe_customer_id = customer_result.data[0].id
+        else:
+            customer = stripe_lib.Customer.create(
+                email=customer_email,
+                name=customer_name,
+                metadata={
+                    'customer_id': customer_id,
+                    'source': 'license_server'
+                }
+            )
+            stripe_customer_id = customer.id
+        
+        interval_map = {
+            'monthly': ('month', 1),
+            'quarterly': ('month', 3),
+            'yearly': ('year', 1)
+        }
+        interval, interval_count = interval_map.get(renewal_interval, ('year', 1))
+        
+        price = stripe_lib.Price.create(
+            unit_amount=int(amount * 100),
+            currency=currency,
+            recurring={
+                'interval': interval,
+                'interval_count': interval_count
+            },
+            product_data={
+                'name': product_name,
+                'metadata': {
+                    'customer_id': customer_id,
+                    'renewal_interval': renewal_interval
+                }
+            },
+            metadata={
+                'customer_id': customer_id,
+                'license_id': license_id or 'pending',
+                'renewal_interval': renewal_interval
+            }
+        )
+        
+        if not success_url:
+            success_url = f"{request.host_url}api/stripe/checkout-success?session_id={{CHECKOUT_SESSION_ID}}"
+        if not cancel_url:
+            cancel_url = f"{request.host_url}license-cancel"
+        
+        checkout_session = stripe_lib.checkout.Session.create(
+            customer=stripe_customer_id,
+            payment_method_types=['card'],
+            mode='subscription',
+            line_items=[{
+                'price': price.id,
+                'quantity': 1,
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                'customer_id': customer_id,
+                'license_id': license_id or 'pending',
+                'customer_email': customer_email,
+                'customer_name': customer_name,
+                'renewal_interval': renewal_interval,
+                'source': 'license_server'
+            }
+        )
+        
+        if license_id:
+            cursor.execute('''
+                UPDATE customer_licenses SET stripe_subscription_id = ?, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
+                WHERE id = ?
+            ''', (checkout_session.id, price.id, renewal_interval, now, license_id))
+        else:
+            cursor.execute('''
+                UPDATE customers SET stripe_subscription_id = ?, updated_at = ?
+                WHERE id = ?
+            ''', (checkout_session.id, now, customer_id))
+        
+        conn.commit()
+        conn.close()
+        
+        log_action('CREATE', 'stripe_checkout', checkout_session.id, customer_name,
+                  f'Checkout created: {product_name} - ${amount}/{renewal_interval}', session.get('username', 'system'))
+        
+        return jsonify({
+            'success': True,
+            'checkout_url': checkout_session.url,
+            'session_id': checkout_session.id,
+            'customer_id': customer_id,
+            'price_id': price.id
+        })
+        
+    except Exception as e:
+        print(f"Create checkout error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stripe/customer-subscriptions', methods=['GET'])
+@login_required
+def get_customer_stripe_subscriptions():
+    """Get all Stripe subscriptions for a customer"""
+    try:
+        customer_id = request.args.get('customer_id')
+        customer_email = request.args.get('customer_email')
+        
+        if not customer_id and not customer_email:
+            return jsonify({'success': False, 'error': 'customer_id or customer_email required'}), 400
+        
+        stripe_config = load_stripe_settings()
+        if not stripe_config or not stripe_config.get('stripe_api_key'):
+            return jsonify({'success': False, 'error': 'Stripe not configured'}), 400
+        
+        import stripe as stripe_lib
+        stripe_lib.api_key = stripe_config['stripe_api_key']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        stripe_customer_id = None
+        if customer_id:
+            cursor.execute('SELECT email, stripe_subscription_id FROM customers WHERE id = ?', (customer_id,))
+        else:
+            cursor.execute('SELECT email, stripe_subscription_id FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return jsonify({'success': False, 'error': 'Customer not found'}), 404
+        
+        email, local_stripe_sub = result
+        
+        customer_result = stripe_lib.Customer.list(email=email, limit=1)
+        if customer_result and customer_result.data:
+            stripe_customer_id = customer_result.data[0].id
+            subscriptions = stripe_lib.Subscription.list(customer=stripe_customer_id, limit=10)
+            
+            return jsonify({
+                'success': True,
+                'subscriptions': [
+                    {
+                        'id': sub.id,
+                        'status': sub.status,
+                        'current_period_start': datetime.fromtimestamp(sub.current_period_start).isoformat(),
+                        'current_period_end': datetime.fromtimestamp(sub.current_period_end).isoformat(),
+                        'items': [
+                            {
+                                'price_id': item.price.id,
+                                'amount': item.price.unit_amount / 100,
+                                'currency': item.price.currency,
+                                'interval': item.price.recurring.interval,
+                                'product': item.price.product
+                            }
+                            for item in sub.items.data
+                        ]
+                    }
+                    for sub in subscriptions.data
+                ]
+            })
+        
+        return jsonify({'success': True, 'subscriptions': []})
+        
+    except Exception as e:
+        print(f"Get customer subscriptions error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stripe/cancel-subscription', methods=['POST'])
+@login_required
+def cancel_stripe_subscription():
+    """Cancel a Stripe subscription"""
+    try:
+        data = request.get_json()
+        subscription_id = data.get('subscription_id', '').strip()
+        license_id = data.get('license_id')
+        customer_id = data.get('customer_id')
+        
+        if not subscription_id:
+            return jsonify({'success': False, 'error': 'Subscription ID is required'}), 400
+        
+        stripe_config = load_stripe_settings()
+        if not stripe_config or not stripe_config.get('stripe_api_key'):
+            return jsonify({'success': False, 'error': 'Stripe not configured'}), 400
+        
+        import stripe as stripe_lib
+        stripe_lib.api_key = stripe_config['stripe_api_key']
+        
+        subscription = stripe_lib.Subscription.retrieve(subscription_id)
+        stripe_lib.Subscription.cancel(subscription_id)
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        
+        if license_id:
+            cursor.execute('''
+                UPDATE customer_licenses SET status = 'cancelled', auto_renew = 0, updated_at = ?
+                WHERE id = ?
+            ''', (now, license_id))
+        elif customer_id:
+            cursor.execute('''
+                UPDATE customer_licenses SET status = 'cancelled', auto_renew = 0, updated_at = ?
+                WHERE customer_id = ?
+            ''', (now, customer_id))
+            cursor.execute('''
+                UPDATE customers SET status = 'cancelled', updated_at = ?
+                WHERE id = ?
+            ''', (now, customer_id))
+        
+        conn.commit()
+        conn.close()
+        
+        log_action('CANCEL', 'stripe_subscription', subscription_id, None,
+                  f'Subscription cancelled via API', session.get('username', 'system'))
+        
+        return jsonify({
+            'success': True,
+            'message': 'Subscription cancelled successfully'
+        })
+        
+    except Exception as e:
+        print(f"Cancel subscription error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/stripe/reconcile', methods=['POST'])
+@login_required
+def reconcile_stripe_customers():
+    """Reconcile Stripe customers with local database - sync subscriptions and licenses"""
+    try:
+        stripe_config = load_stripe_settings()
+        if not stripe_config or not stripe_config.get('stripe_api_key'):
+            return jsonify({'success': False, 'error': 'Stripe not configured'}), 400
+        
+        import stripe as stripe_lib
+        stripe_lib.api_key = stripe_config['stripe_api_key']
+        
+        data = request.get_json()
+        reconcile_mode = data.get('mode', 'all')
+        created_count = 0
+        updated_count = 0
+        errors = []
+        
+        if reconcile_mode in ['all', 'customers']:
+            stripe_customers = stripe_lib.Customer.list(limit=100)
+            
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            
+            for customer in stripe_customers.auto_paging_iter():
+                try:
+                    customer_email = customer.email
+                    if not customer_email:
+                        continue
+                    
+                    cursor.execute('SELECT id FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
+                    result = cursor.fetchone()
+                    
+                    if not result:
+                        customer_number = generate_customer_number()
+                        customer_name = customer.name or customer_email
+                        
+                        cursor.execute('''
+                            INSERT INTO customers (customer_number, name, email, status, created_at, updated_at)
+                            VALUES (?, ?, ?, 'active', ?, ?)
+                        ''', (customer_number, customer_name, customer_email, now, now))
+                        
+                        local_customer_id = cursor.lastrowid
+                        created_count += 1
+                        
+                        log_action('CREATE', 'customer', local_customer_id, customer_name,
+                                  f'Reconciled from Stripe. Email: {customer_email}', session.get('username', 'system'))
+                    else:
+                        local_customer_id = result[0]
+                
+                except Exception as e:
+                    errors.append(f"Customer {customer.id}: {str(e)}")
+            
+            conn.commit()
+            conn.close()
+        
+        if reconcile_mode in ['all', 'subscriptions']:
+            stripe_subscriptions = stripe_lib.Subscription.list(limit=100, status='all')
+            
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            
+            for subscription in stripe_subscriptions.auto_paging_iter():
+                try:
+                    subscription_id = subscription.id
+                    customer_stripe_id = subscription.customer
+                    status = subscription.status
+                    current_period_end = subscription.current_period_end
+                    
+                    customer_email = None
+                    if hasattr(subscription, 'customer') and isinstance(subscription.customer, dict):
+                        customer_email = subscription.customer.get('email')
+                    elif hasattr(subscription, 'customer_email'):
+                        customer_email = subscription.customer_email
+                    
+                    if not customer_email:
+                        customer_obj = stripe_lib.Customer.retrieve(customer_stripe_id)
+                        customer_email = customer_obj.email
+                    
+                    if not customer_email:
+                        continue
+                    
+                    cursor.execute('SELECT id FROM customers WHERE LOWER(email) = LOWER(?)', (customer_email,))
+                    result = cursor.fetchone()
+                    
+                    if not result:
+                        customer_number = generate_customer_number()
+                        customer_name = customer_email
+                        cursor.execute('''
+                            INSERT INTO customers (customer_number, name, email, status, stripe_subscription_id, created_at, updated_at)
+                            VALUES (?, ?, ?, 'active', ?, ?, ?)
+                        ''', (customer_number, customer_name, customer_email, subscription_id, now, now))
+                        local_customer_id = cursor.lastrowid
+                        created_count += 1
+                    else:
+                        local_customer_id = result[0]
+                        cursor.execute('''
+                            UPDATE customers SET stripe_subscription_id = ?, updated_at = ?
+                            WHERE id = ?
+                        ''', (subscription_id, now, local_customer_id))
+                    
+                    our_status = 'active'
+                    if status in ['past_due', 'unpaid']:
+                        our_status = 'suspended'
+                    elif status in ['canceled', 'unfunded']:
+                        our_status = 'cancelled'
+                    
+                    expiry_date = datetime.fromtimestamp(current_period_end).isoformat() if current_period_end else None
+                    
+                    cursor.execute('SELECT id FROM customer_licenses WHERE customer_id = ?', (local_customer_id,))
+                    existing_license = cursor.fetchone()
+                    
+                    if not existing_license:
+                        license_key = generate_license_key()
+                        price_id = subscription.items.data[0].price.id if subscription.items.data else ''
+                        interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
+                        interval_map = {'month': 'monthly', 'year': 'yearly'}
+                        renewal_interval = interval_map.get(interval, 'yearly')
+                        
+                        license_data = {
+                            'customer_number': local_customer_id,
+                            'customer_name': customer_email,
+                            'expiry_date': expiry_date or (datetime.now() + timedelta(days=365)).isoformat(),
+                            'features': ['full_access']
+                        }
+                        encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
+                        
+                        cursor.execute('''
+                            INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+                        ''', (local_customer_id, license_key, encrypted_data, 
+                              expiry_date or (datetime.now() + timedelta(days=365)).isoformat(),
+                              our_status, subscription_id, price_id, renewal_interval, now, now))
+                        
+                        created_count += 1
+                        log_action('CREATE', 'license', cursor.lastrowid, customer_email,
+                                  f'Reconciled from Stripe subscription. Status: {our_status}', session.get('username', 'system'))
+                    else:
+                        license_id = existing_license[0]
+                        if expiry_date:
+                            cursor.execute('''
+                                UPDATE customer_licenses 
+                                SET status = ?, expiry_date = ?, stripe_subscription_id = ?, auto_renew = 1, updated_at = ?
+                                WHERE id = ?
+                            ''', (our_status, expiry_date, subscription_id, now, license_id))
+                        else:
+                            cursor.execute('''
+                                UPDATE customer_licenses 
+                                SET status = ?, stripe_subscription_id = ?, auto_renew = 1, updated_at = ?
+                                WHERE id = ?
+                            ''', (our_status, subscription_id, now, license_id))
+                        
+                        updated_count += 1
+                
+                except Exception as e:
+                    errors.append(f"Subscription {subscription.id}: {str(e)}")
+            
+            conn.commit()
+            conn.close()
+        
+        log_action('RECONCILE', 'stripe', None, None,
+                  f'Reconciliation completed: {created_count} created, {updated_count} updated, {len(errors)} errors',
+                  session.get('username', 'system'))
+        
+        return jsonify({
+            'success': True,
+            'created': created_count,
+            'updated': updated_count,
+            'errors': errors[:10]
+        })
+        
+    except Exception as e:
+        print(f"Reconcile error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':
