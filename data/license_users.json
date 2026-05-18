@@ -1,0 +1,11 @@
+{
+  "users": {
+    "admin": {
+      "password": "bcrypt:$2b$12$DsTbzgSvlUavVqXvuX7E1eS5WwZVYcgxOlWdQ2yHLFMujUxP.uMCC",
+      "role": "admin",
+      "email": "",
+      "failed_attempts": 0,
+      "locked_until": null
+    }
+  }
+}
