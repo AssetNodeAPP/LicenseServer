@@ -564,8 +564,8 @@ def save_stripe_settings(api_key: str, webhook_secret: str):
         return False
 
 
-def send_email(recipient_email, subject, body, attachment_path=None, smtp_config=None):
-    """Send email with optional attachment"""
+def send_email(recipient_email, subject, body, attachment_path=None, smtp_config=None, html_body=None):
+    """Send email with optional attachment and HTML content"""
     if not smtp_config:
         return False, "SMTP not configured"
     
@@ -575,7 +575,11 @@ def send_email(recipient_email, subject, body, attachment_path=None, smtp_config
         msg['To'] = recipient_email
         msg['Subject'] = subject
         
-        msg.attach(MIMEText(body, 'plain'))
+        if html_body:
+            msg.attach(MIMEText(html_body, 'html'))
+            msg.attach(MIMEText(body, 'plain'))
+        else:
+            msg.attach(MIMEText(body, 'plain'))
         
         if attachment_path and os.path.exists(attachment_path):
             with open(attachment_path, "rb") as attachment:
@@ -594,6 +598,192 @@ def send_email(recipient_email, subject, body, attachment_path=None, smtp_config
         return True, "Email sent successfully"
     except Exception as e:
         return False, str(e)
+
+
+def generate_license_email_html(customer_name, customer_number, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_subscription_id, custom_message='', smtp_config=None):
+    """Generate professional HTML email template for license details"""
+    now = datetime.now().strftime('%B %d, %Y')
+    status_color = '#10b981' if status == 'active' else '#ef4444' if status in ['cancelled', 'suspended'] else '#f59e0b'
+    status_text = status.title()
+    
+    auto_renew_html = ''
+    if auto_renew:
+        interval_text = renewal_interval.title() if renewal_interval else 'Yearly'
+        stripe_html = f'<div style="color: #6b7280; font-size: 13px; margin-top: 4px;">Managed via Stripe subscription</div>' if stripe_subscription_id else ''
+        auto_renew_html = f'''
+        <tr>
+            <td style="padding: 16px; background-color: #f0fdf4; border-bottom: 1px solid #e5e7eb;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">AUTO-RENEWAL</span>
+                    <span style="color: #374151; font-weight: 500;">Enabled ({interval_text})</span>
+                </div>
+                {stripe_html}
+            </td>
+        </tr>
+        '''
+    
+    custom_message_html = ''
+    if custom_message:
+        custom_message_html = f'''
+        <tr>
+            <td style="padding: 16px; background-color: #eff6ff; border-bottom: 1px solid #e5e7eb;">
+                <div style="color: #1e40af; font-size: 13px; font-weight: 500; margin-bottom: 8px;">NOTE FROM SUPPORT:</div>
+                <div style="color: #374151; font-size: 14px; line-height: 1.6;">{custom_message}</div>
+            </td>
+        </tr>
+        '''
+    
+    sender_email = smtp_config['sender_email'] if smtp_config else 'support@assetnode.com'
+    
+    html = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Details</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f3f4f6;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 32px; text-align: center;">
+                            <div style="margin-bottom: 16px;">
+                                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block;">
+                                    <rect width="64" height="64" rx="16" fill="white" fill-opacity="0.2"/>
+                                    <path d="M32 16L20 24V40L32 48L44 40V24L32 16Z" fill="white" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                                    <path d="M32 24V40M24 28L32 32L40 28" stroke="#667eea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">AssetNode</h1>
+                            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px; font-weight: 500;">License Management System</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Welcome Message -->
+                    <tr>
+                        <td style="padding: 32px 32px 24px 32px;">
+                            <h2 style="margin: 0 0 12px 0; color: #111827; font-size: 22px; font-weight: 600;">Welcome, {customer_name}!</h2>
+                            <p style="margin: 0; color: #6b7280; font-size: 15px; line-height: 1.6;">Thank you for your purchase! Your license details are below. Please keep this information secure.</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- License Details Card -->
+                    <tr>
+                        <td style="padding: 0 32px 32px 32px;">
+                            <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                                <tr>
+                                    <td style="background-color: #f9fafb; padding: 16px; border-bottom: 1px solid #e5e7eb;">
+                                        <div style="color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">CUSTOMER INFORMATION</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
+                                        <table style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">Customer Number:</td>
+                                                <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600; font-family: 'Courier New', monospace;">{customer_number}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Customer Name:</td>
+                                                <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">{customer_name}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="background-color: #f9fafb; padding: 16px; border-bottom: 1px solid #e5e7eb;">
+                                        <div style="color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">LICENSE DETAILS</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
+                                        <table style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 140px;">License Key:</td>
+                                                <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600; font-family: 'Courier New', monospace; background-color: #f3f4f6; padding: 8px 12px; border-radius: 4px; display: inline-block;">{license_key}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Status:</td>
+                                                <td style="padding: 8px 0;">
+                                                    <span style="background-color: {status_color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">{status_text}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">MAC Address:</td>
+                                                <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500;">{mac_address or 'Any (not bound)'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Issued Date:</td>
+                                                <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 500;">{now}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Expiry Date:</td>
+                                                <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">{expiry_date[:10]}</td>
+                                            </tr>
+                                            {auto_renew_html}
+                                            {custom_message_html}
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Important Notes -->
+                    <tr>
+                        <td style="padding: 0 32px 32px 32px;">
+                            <table style="width: 100%; border-collapse: collapse; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
+                                <tr>
+                                    <td style="padding: 16px;">
+                                        <div style="color: #92400e; font-size: 14px; font-weight: 600; margin-bottom: 8px;">Important:</div>
+                                        <ul style="margin: 0; padding-left: 20px; color: #78350f; font-size: 13px; line-height: 1.8;">
+                                            <li>Keep your license key secure and do not share it with others</li>
+                                            <li>This license is bound to the MAC address specified above (if applicable)</li>
+                                            <li>Contact support if you need to transfer this license to a new machine</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Support Section -->
+                    <tr>
+                        <td style="padding: 0 32px 32px 32px;">
+                            <table style="width: 100%; border-collapse: collapse; background-color: #f9fafb; border-radius: 8px; padding: 24px;">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <div style="color: #6b7280; font-size: 13px; font-weight: 600; margin-bottom: 12px;">NEED HELP?</div>
+                                        <div style="color: #111827; font-size: 14px; margin-bottom: 8px;">Our support team is here to assist you</div>
+                                        <a href="mailto:{sender_email}" style="color: #667eea; font-size: 14px; font-weight: 600; text-decoration: none;">{sender_email}</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">Thank you for choosing AssetNode!</p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">Best regards,<br><strong>AssetNode Support Team</strong></p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    '''
+    
+    return html.strip()
 
 
 class MACLicenseGenerator:
@@ -1395,6 +1585,91 @@ def smtp_status():
     return jsonify({'configured': config is not None})
 
 
+def _send_license_email(customer_email, customer_name, customer_number, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_subscription_id, custom_message=''):
+    """Send license details email to customer with professional HTML design"""
+    try:
+        smtp_config = load_smtp_settings()
+        if not smtp_config:
+            print("SMTP not configured, skipping email")
+            return False
+        
+        if not customer_email:
+            print("No customer email, skipping email")
+            return False
+        
+        subject = f"Your AssetNode License Details - {datetime.now().strftime('%Y-%m-%d')}"
+        
+        html_body = generate_license_email_html(
+            customer_name=customer_name,
+            customer_number=customer_number,
+            license_key=license_key,
+            expiry_date=expiry_date,
+            status=status,
+            mac_address=mac_address,
+            auto_renew=auto_renew,
+            renewal_interval=renewal_interval,
+            stripe_subscription_id=stripe_subscription_id,
+            custom_message=custom_message,
+            smtp_config=smtp_config
+        )
+        
+        body = f"""Dear {customer_name},
+
+Thank you for your purchase! Below are your AssetNode license details.
+
+CUSTOMER INFORMATION:
+Customer Number: {customer_number}
+Customer Name: {customer_name}
+
+LICENSE INFORMATION:
+License Key: {license_key}
+Status: {status.title()}
+MAC Address: {mac_address or 'Any (not bound)'}
+Issued: {datetime.now().strftime('%Y-%m-%d')}
+Expires: {expiry_date[:10]}
+
+"""
+        if auto_renew:
+            body += f"""AUTO-RENEWAL:
+Enabled ({renewal_interval.title() if renewal_interval else 'Yearly'})
+"""
+            if stripe_subscription_id:
+                body += f"Stripe Subscription: {stripe_subscription_id}\n"
+            body += "\n"
+        
+        if custom_message:
+            body += f"""NOTE FROM SUPPORT:
+{custom_message}
+
+"""
+        
+        body += f"""SUPPORT:
+Email: {smtp_config['sender_email']}
+
+IMPORTANT:
+• Keep your license key secure and do not share it with others
+• This license is bound to the MAC address specified above (if applicable)
+• Contact support if you need to transfer this license to a new machine
+
+Thank you for choosing AssetNode!
+
+Best regards,
+AssetNode Support Team
+"""
+        
+        success, message = send_email(customer_email, subject, body, None, smtp_config, html_body=html_body)
+        if success:
+            log_action('EMAIL_SENT', 'license', None, customer_name, f"License details sent to {customer_email}", 'system')
+            return True
+        else:
+            print(f"Failed to send email: {message}")
+            return False
+        
+    except Exception as e:
+        print(f"Error sending license email: {e}")
+        return False
+
+
 @app.route('/api/email/send-license', methods=['POST'])
 @login_required
 def send_online_license_email():
@@ -1403,6 +1678,7 @@ def send_online_license_email():
     
     license_id = data.get('license_id')
     custom_message = data.get('message', '').strip()
+    override_email = data.get('email', '').strip()
     
     if not license_id:
         return jsonify({'success': False, 'error': 'License ID is required'})
@@ -1427,70 +1703,49 @@ def send_online_license_email():
     
     lic_id, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_sub, cust_name, cust_email, cust_number = lic
     
-    recipient_email = cust_email
+    if override_email:
+        recipient_email = override_email
+    else:
+        recipient_email = cust_email
+    
     if not recipient_email:
-        return jsonify({'success': False, 'error': 'No email address on file for this customer'})
+        return jsonify({'success': False, 'error': 'No email address provided and no email on file for this customer'})
+    
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, recipient_email):
+        return jsonify({'success': False, 'error': 'Invalid email address format'})
     
     smtp_config = load_smtp_settings()
     if not smtp_config:
         return jsonify({'success': False, 'error': 'SMTP not configured', 'preview': True})
     
     try:
-        is_renewal = bool(stripe_sub)
-        subject = f"Your AssetNode License Details - {datetime.now().strftime('%Y-%m-%d')}"
+        success = _send_license_email(
+            customer_email=recipient_email,
+            customer_name=cust_name,
+            customer_number=cust_number,
+            license_key=license_key,
+            expiry_date=expiry_date,
+            status=status,
+            mac_address=mac_address,
+            auto_renew=bool(auto_renew),
+            renewal_interval=renewal_interval,
+            stripe_subscription_id=stripe_sub,
+            custom_message=custom_message
+        )
         
-        body = f"""Dear {cust_name},
-
-Thank you for your purchase! Below are your AssetNode license details.
-
-LICENSE INFORMATION:
-Customer Number: {cust_number}
-License Key: {license_key}
-Status: {status.title()}
-MAC Address: {mac_address or 'Any (not bound)'}
-Issued: {datetime.now().strftime('%Y-%m-%d')}
-Expires: {expiry_date[:10]}
-
-"""
-        if auto_renew:
-            body += f"""AUTO-RENEWAL:
-Enabled ({renewal_interval.title()})
-"""
-            if stripe_sub:
-                body += "Managed via Stripe subscription.\n"
-            body += "\n"
-        
-        if custom_message:
-            body += f"""NOTE FROM SUPPORT:
-{custom_message}
-
-"""
-        
-        body += f"""SUPPORT:
-Email: {smtp_config['sender_email']}
-
-IMPORTANT:
-• Keep your license key secure and do not share it with others
-• This license is bound to the MAC address specified above (if applicable)
-• Contact support if you need to transfer this license to a new machine
-
-Thank you for choosing AssetNode!
-
-Best regards,
-AssetNode Support Team
-"""
-        
-        success, message = send_email(recipient_email, subject, body, None, smtp_config)
-        if not success:
-            return jsonify({'success': False, 'error': message})
-        
-        try:
-            username = session.get('username', 'system')
-        except:
-            username = 'system'
-        log_action('EMAIL_SENT', 'license', license_id, cust_name, f"License details emailed to {recipient_email}", username)
-        
-        return jsonify({'success': True, 'message': f'License details sent to {recipient_email}'})
+        if success:
+            try:
+                username = session.get('username', 'system')
+            except:
+                username = 'system'
+            log_msg = f"License details emailed to {recipient_email}"
+            if override_email and override_email != cust_email:
+                log_msg += f" (overrode {cust_email})"
+            log_action('EMAIL_SENT', 'license', license_id, cust_name, log_msg, username)
+            return jsonify({'success': True, 'message': f'License details sent to {recipient_email}'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to send email'})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -2748,6 +3003,10 @@ def _handle_checkout_completed(session):
         license_id = metadata.get('license_id')
         customer_id = metadata.get('customer_id')
         
+        if not subscription_id:
+            print("No subscription_id in checkout session")
+            return
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         now = datetime.now().isoformat()
@@ -2765,47 +3024,75 @@ def _handle_checkout_completed(session):
                 ''', (customer_number, customer_name or customer_email, customer_email, now, now))
                 customer_id = cursor.lastrowid
         
+        cursor.execute('''
+            SELECT id FROM customer_licenses WHERE stripe_subscription_id = ?
+        ''', (subscription_id,))
+        already_exists = cursor.fetchone()
+        
+        if already_exists:
+            print(f"License already exists for subscription {subscription_id}, skipping")
+            conn.close()
+            return
+        
         if license_id and license_id != 'pending':
-            if subscription_id:
-                import stripe as stripe_lib
-                stripe_config = load_stripe_settings()
-                stripe_lib.api_key = stripe_config['stripe_api_key']
-                subscription = stripe_lib.Subscription.retrieve(subscription_id)
-                current_period_end = subscription.current_period_end
-                expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
-                price_id = subscription.items.data[0].price.id if subscription.items.data else ''
-                interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
-                
-                interval_map = {'month': 'monthly', 'year': 'yearly'}
-                renewal_interval = interval_map.get(interval, 'yearly')
-                
-                cursor.execute('''
-                    UPDATE customer_licenses 
-                    SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
-                    WHERE id = ?
-                ''', (subscription_id, expiry_date, price_id, renewal_interval, now, license_id))
-                
-                log_action('UPDATE', 'license', license_id, customer_name or customer_email,
-                          f'Subscription activated. New expiry: {expiry_date[:10]}', 'stripe_webhook')
-        elif customer_id:
-            license_key = generate_license_key()
+            import stripe as stripe_lib
+            stripe_config = load_stripe_settings()
+            stripe_lib.api_key = stripe_config['stripe_api_key']
+            subscription = stripe_lib.Subscription.retrieve(subscription_id)
+            current_period_end = subscription.current_period_end
+            expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
+            price_id = subscription.items.data[0].price.id if subscription.items.data else ''
+            interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
             
-            if subscription_id:
-                import stripe as stripe_lib
-                stripe_config = load_stripe_settings()
-                stripe_lib.api_key = stripe_config['stripe_api_key']
-                subscription = stripe_lib.Subscription.retrieve(subscription_id)
-                current_period_end = subscription.current_period_end
-                expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
-                price_id = subscription.items.data[0].price.id if subscription.items.data else ''
-                interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
-                
-                interval_map = {'month': 'monthly', 'year': 'yearly'}
-                renewal_interval = interval_map.get(interval, 'yearly')
-            else:
-                expiry_date = (datetime.now() + timedelta(days=365)).isoformat()
-                price_id = ''
-                renewal_interval = 'yearly'
+            interval_map = {'month': 'monthly', 'year': 'yearly'}
+            renewal_interval = interval_map.get(interval, 'yearly')
+            
+            cursor.execute('''
+                UPDATE customer_licenses 
+                SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
+                WHERE id = ?
+            ''', (subscription_id, expiry_date, price_id, renewal_interval, now, license_id))
+            
+            log_action('UPDATE', 'license', license_id, customer_name or customer_email,
+                      f'Subscription activated. New expiry: {expiry_date[:10]}', 'stripe_webhook')
+            
+            cursor.execute('''
+                SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
+                       c.name, c.email, c.customer_number
+                FROM customer_licenses cl
+                JOIN customers c ON cl.customer_id = c.id
+                WHERE cl.id = ?
+            ''', (license_id,))
+            lic_data = cursor.fetchone()
+            
+            if lic_data:
+                l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
+                _send_license_email(
+                    customer_email=c_email,
+                    customer_name=c_name,
+                    customer_number=c_number,
+                    license_key=l_key,
+                    expiry_date=l_expiry,
+                    status=l_status,
+                    mac_address=l_mac,
+                    auto_renew=bool(l_auto_renew),
+                    renewal_interval=l_interval,
+                    stripe_subscription_id=l_stripe_sub
+                )
+        elif customer_id:
+            import stripe as stripe_lib
+            stripe_config = load_stripe_settings()
+            stripe_lib.api_key = stripe_config['stripe_api_key']
+            subscription = stripe_lib.Subscription.retrieve(subscription_id)
+            current_period_end = subscription.current_period_end
+            expiry_date = datetime.fromtimestamp(current_period_end).isoformat()
+            price_id = subscription.items.data[0].price.id if subscription.items.data else ''
+            interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
+            
+            interval_map = {'month': 'monthly', 'year': 'yearly'}
+            renewal_interval = interval_map.get(interval, 'yearly')
+            
+            license_key = generate_license_key()
             
             license_data = {
                 'customer_number': customer_id,
@@ -2823,6 +3110,36 @@ def _handle_checkout_completed(session):
             
             log_action('CREATE', 'license', license_id, customer_name or customer_email, 
                       f'Auto-created from Stripe checkout. Expires: {expiry_date[:10]}', 'stripe_webhook')
+            
+            cursor.execute('''
+                SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
+                       c.name, c.email, c.customer_number
+                FROM customer_licenses cl
+                JOIN customers c ON cl.customer_id = c.id
+                WHERE cl.id = ?
+            ''', (license_id,))
+            lic_data = cursor.fetchone()
+            
+            if lic_data:
+                l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
+                _send_license_email(
+                    customer_email=c_email,
+                    customer_name=c_name,
+                    customer_number=c_number,
+                    license_key=l_key,
+                    expiry_date=l_expiry,
+                    status=l_status,
+                    mac_address=l_mac,
+                    auto_renew=bool(l_auto_renew),
+                    renewal_interval=l_interval,
+                    stripe_subscription_id=l_stripe_sub
+                )
+        
+        if customer_id:
+            cursor.execute('''
+                UPDATE customers SET status = 'active', updated_at = ?
+                WHERE id = ?
+            ''', (now, customer_id))
         
         conn.commit()
         conn.close()
@@ -2847,12 +3164,22 @@ def _handle_subscription_created(subscription):
         cursor = conn.cursor()
         now = datetime.now().isoformat()
         
+        cursor.execute('''
+            SELECT id FROM customer_licenses WHERE stripe_subscription_id = ?
+        ''', (subscription_id,))
+        already_exists = cursor.fetchone()
+        
+        if already_exists:
+            print(f"License already exists for subscription {subscription_id}, skipping")
+            conn.close()
+            return
+        
         price_id = subscription.items.data[0].price.id if subscription.items.data else ''
         interval = subscription.items.data[0].price.recurring.interval if subscription.items.data else 'year'
         interval_map = {'month': 'monthly', 'year': 'yearly'}
         renewal_interval = interval_map.get(interval, 'yearly')
         
-        if license_id:
+        if license_id and license_id != 'pending':
             cursor.execute('''
                 UPDATE customer_licenses 
                 SET stripe_subscription_id = ?, expiry_date = ?, status = 'active', auto_renew = 1, stripe_price_id = ?, renewal_interval = ?, updated_at = ?
@@ -2868,7 +3195,9 @@ def _handle_subscription_created(subscription):
                 log_action('UPDATE', 'license', license_id, None,
                           f'Subscription created. Expires: {expiry_date[:10]}', 'stripe_webhook')
         elif customer_id:
-            cursor.execute('SELECT id FROM customer_licenses WHERE customer_id = ? AND stripe_subscription_id IS NULL LIMIT 1', (customer_id,))
+            cursor.execute('''
+                SELECT id FROM customer_licenses WHERE customer_id = ? AND stripe_subscription_id IS NULL LIMIT 1
+            ''', (customer_id,))
             existing_license = cursor.fetchone()
             
             if existing_license:
@@ -2890,6 +3219,30 @@ def _handle_subscription_created(subscription):
                 
                 log_action('CREATE', 'license', cursor.lastrowid, None,
                           f'Auto-created from subscription. Expires: {expiry_date[:10]}', 'stripe_webhook')
+                
+                cursor.execute('''
+                    SELECT cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew, cl.renewal_interval, cl.stripe_subscription_id,
+                           c.name, c.email, c.customer_number
+                    FROM customer_licenses cl
+                    JOIN customers c ON cl.customer_id = c.id
+                    WHERE cl.id = ?
+                ''', (cursor.lastrowid,))
+                lic_data = cursor.fetchone()
+                
+                if lic_data:
+                    l_key, l_expiry, l_status, l_mac, l_auto_renew, l_interval, l_stripe_sub, c_name, c_email, c_number = lic_data
+                    _send_license_email(
+                        customer_email=c_email,
+                        customer_name=c_name,
+                        customer_number=c_number,
+                        license_key=l_key,
+                        expiry_date=l_expiry,
+                        status=l_status,
+                        mac_address=l_mac,
+                        auto_renew=bool(l_auto_renew),
+                        renewal_interval=l_interval,
+                        stripe_subscription_id=l_stripe_sub
+                    )
         
         if customer_id:
             cursor.execute('''

@@ -806,6 +806,7 @@
                     <div class="mb-3">
                         <label class="form-label">Email Address</label>
                         <input type="email" class="form-control" id="sendLicEmail" placeholder="customer@example.com">
+                        <div class="form-text">Pre-filled with customer's email on file. Edit to send to a different address.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Custom Message (Optional)</label>
@@ -1268,6 +1269,7 @@
                     var autoRenewBadge = lic.auto_renew ? `<span class="badge bg-success me-1" id="autoRenewBadge_${lic.id}">Auto-renew</span>` : '';
                     var stripeBadge = lic.stripe_subscription_id ? '<span class="badge bg-info me-1">Stripe</span>' : '';
                     var maskedKey = lic.license_key.substring(0, 8) + '****' + lic.license_key.substring(lic.license_key.length - 4);
+                    var custEmail = c.email || '';
                     
                     return `
                     <tr>
@@ -1294,6 +1296,9 @@
                             <div class="d-flex flex-wrap gap-1">
                                 <button class="btn btn-sm btn-outline-primary" onclick="showRenewModal(${lic.id}, '${safeName}', '${lic.expiry_date}')">
                                     <i class="bi bi-arrow-repeat"></i> Renew
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" onclick="showSendLicenseModal(${lic.id}, '${custEmail.replace(/'/g, "\\'")}')" title="Send License Email">
+                                    <i class="bi bi-envelope"></i> Email
                                 </button>
                                 ${lic.status === 'active' ? `<button class="btn btn-sm btn-outline-danger" onclick="suspendLicense(${lic.id})" title="Suspend"><i class="bi bi-pause"></i></button>` : ''}
                                 ${lic.status !== 'active' && lic.status !== 'cancelled' ? `<button class="btn btn-sm btn-outline-success" onclick="reactivateLicense(${lic.id})" title="Reactivate"><i class="bi bi-play"></i></button>` : ''}
@@ -1340,8 +1345,8 @@
             }
         }
         
-        function showSendLicenseModal(licenseId) {
-            document.getElementById('sendLicModal').dataset.licenseId = licenseId;
+        function showSendLicenseModal(licenseId, customerEmail) {
+            document.getElementById('sendLicenseModal').dataset.licenseId = licenseId;
             document.getElementById('sendLicMessage').value = '';
             document.getElementById('sendLicBtn').disabled = false;
             document.getElementById('sendLicBtnText').textContent = 'Send Email';
@@ -1351,12 +1356,18 @@
                 document.getElementById('sendLicCustomerName').value = custName.textContent.trim();
             }
             
+            if (customerEmail) {
+                document.getElementById('sendLicEmail').value = customerEmail;
+            } else {
+                document.getElementById('sendLicEmail').value = '';
+            }
+            
             bootstrap.Modal.getInstance(document.getElementById('customerDetailModal'))?.hide();
             new bootstrap.Modal(document.getElementById('sendLicenseModal')).show();
         }
         
         async function sendLicenseEmail() {
-            var modal = document.getElementById('sendLicModal');
+            var modal = document.getElementById('sendLicenseModal');
             var licenseId = modal.dataset.licenseId;
             var email = document.getElementById('sendLicEmail').value.trim();
             var message = document.getElementById('sendLicMessage').value.trim();

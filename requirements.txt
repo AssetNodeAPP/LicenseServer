@@ -19,6 +19,7 @@ pyinstaller-hooks-contrib==2026.4
 pyperclip==1.11.0
 pywin32-ctypes==0.2.3
 setuptools==82.0.1
+stripe>=10.0.0
 ttkbootstrap==1.20.1
 waitress==3.0.2
 Werkzeug==3.1.5
