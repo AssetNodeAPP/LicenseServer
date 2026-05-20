@@ -1913,12 +1913,12 @@ def activate_license():
         if not re.match(r'^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$', license_key):
             return jsonify({'success': False, 'error': 'Invalid license key format'})
         
-        # Find customer by license key
+        # Find customer by license key (include mac_address from customer_licenses)
         conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT cl.id, cl.customer_id, cl.license_key, cl.expiry_date, 
+            SELECT cl.id, cl.customer_id, cl.license_key, cl.expiry_date, cl.mac_address,
                    c.name, c.customer_number, c.status
             FROM customer_licenses cl
             JOIN customers c ON cl.customer_id = c.id
@@ -1930,7 +1930,7 @@ def activate_license():
             conn.close()
             return jsonify({'success': False, 'error': 'License not found or inactive'})
         
-        lic_id, customer_id, lic_key, expiry_date, company_name, customer_number, cust_status = license_record
+        lic_id, customer_id, lic_key, expiry_date, bound_mac, company_name, customer_number, cust_status = license_record
         
         # Check if customer is active
         if cust_status != 'active':
@@ -1942,6 +1942,32 @@ def activate_license():
         if datetime.now() > expiry:
             conn.close()
             return jsonify({'success': False, 'error': 'License has expired'})
+        
+        # --- MAC validation and single-seat enforcement ---
+        incoming_mac = mac_address.upper()
+        
+        if bound_mac and bound_mac.strip():
+            # MAC-bound license: incoming MAC must match
+            if incoming_mac != bound_mac.upper():
+                conn.close()
+                return jsonify({'success': False, 'error': 'License is bound to a different machine'})
+        else:
+            # "Any machine" license: single-seat enforcement
+            cursor.execute('''
+                SELECT ls.mac_address 
+                FROM license_sessions ls
+                JOIN customers c ON ls.customer_id = c.id
+                JOIN customer_licenses cl ON cl.customer_id = c.id
+                WHERE cl.license_key = ? AND ls.expires_at > ?
+                LIMIT 1
+            ''', (license_key, datetime.now().isoformat()))
+            existing = cursor.fetchone()
+            
+            if existing:
+                existing_mac = (existing[0] or '').upper()
+                if existing_mac and existing_mac != incoming_mac:
+                    conn.close()
+                    return jsonify({'success': False, 'error': 'License already activated on another machine'})
         
         # Generate session key (AES)
         session_key = Fernet.generate_key()
@@ -1980,16 +2006,6 @@ def activate_license():
             'expiry_date': expiry_date,
             'customer_number': customer_number,
             'customer_name': company_name
-        })
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'encrypted_license': encrypted_license,
-            'session_key': session_key_b64,
-            'expiry_date': expiry_date
         })
         
     except Exception as e:
