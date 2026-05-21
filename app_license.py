@@ -258,10 +258,16 @@ def init_database():
             last_check_in TEXT,
             created_at TEXT NOT NULL,
             expires_at TEXT NOT NULL,
-            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        FOREIGN KEY (customer_id) REFERENCES customers (id)
         )
     ''')
 
+    # Migration: add customer_license_id to license_sessions (scopes sessions to a specific license)
+    try:
+        cursor.execute('ALTER TABLE license_sessions ADD COLUMN customer_license_id INTEGER REFERENCES customer_licenses(id)')
+    except Exception:
+        pass  # Column already exists
+    
     # Stripe settings table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS stripe_settings (
@@ -1956,11 +1962,9 @@ def activate_license():
             cursor.execute('''
                 SELECT ls.mac_address 
                 FROM license_sessions ls
-                JOIN customers c ON ls.customer_id = c.id
-                JOIN customer_licenses cl ON cl.customer_id = c.id
-                WHERE cl.license_key = ? AND ls.expires_at > ?
+                WHERE ls.customer_license_id = ? AND ls.expires_at > ?
                 LIMIT 1
-            ''', (license_key, datetime.now().isoformat()))
+            ''', (lic_id, datetime.now().isoformat()))
             existing = cursor.fetchone()
             
             if existing:
@@ -1987,14 +1991,17 @@ def activate_license():
         now = datetime.now().isoformat()
         expires_at = (datetime.now() + timedelta(days=3650)).isoformat()
         
-        # Remove old sessions for this customer
-        cursor.execute('DELETE FROM license_sessions WHERE customer_id = ?', (customer_id,))
+        # Remove old session for this specific license
+        cursor.execute('DELETE FROM license_sessions WHERE customer_license_id = ?', (lic_id,))
         
-        # Create new session
+        # Create new session with customer_license_id
         cursor.execute('''
-            INSERT INTO license_sessions (customer_id, session_key_encrypted, mac_address, last_check_in, created_at, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (customer_id, session_key_b64, mac_address, now, now, expires_at))
+            INSERT INTO license_sessions (customer_id, customer_license_id, session_key_encrypted, mac_address, last_check_in, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (customer_id, lic_id, session_key_b64, mac_address, now, now, expires_at))
+        
+        # Permanently bind the MAC to the license after first activation
+        cursor.execute('UPDATE customer_licenses SET mac_address = ?, updated_at = ? WHERE id = ?', (mac_address, now, lic_id))
         
         conn.commit()
         conn.close()
@@ -2035,7 +2042,8 @@ def check_license():
         cursor.execute('''
             SELECT ls.id, ls.customer_id, ls.session_key_encrypted, ls.expires_at, 
                    c.customer_number, c.status as customer_status,
-                   cl.expiry_date, cl.status as license_status
+                   cl.expiry_date, cl.status as license_status,
+                   ls.mac_address
             FROM license_sessions ls
             JOIN customers c ON ls.customer_id = c.id
             JOIN customer_licenses cl ON cl.customer_id = c.id
@@ -2050,7 +2058,7 @@ def check_license():
         matched_session = None
         
         for session in sessions:
-            session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status = session
+            session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status, session_mac = session
             try:
                 session_key = base64.b64decode(session_key_enc)
                 payload = json.loads(decrypt_with_aes(encrypted_data, session_key))
@@ -2066,7 +2074,16 @@ def check_license():
         if not decrypted_payload or not matched_session:
             return jsonify({'success': False, 'error': 'Invalid session or expired'})
         
-        session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status = matched_session
+        session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status, session_mac = matched_session
+        
+        # MAC re-verification: ensure client is still on the same machine that activated
+        client_mac = decrypted_payload.get('mac_address', data.get('mac_address', '')).upper()
+        if client_mac and session_mac and session_mac.upper() != client_mac:
+            return jsonify({
+                'status': 'rejected',
+                'days_remaining': 0,
+                'encrypted_message': encrypt_with_aes({'message': 'License is bound to a different machine'}, base64.b64decode(session_key_enc))
+            })
         
         # Check customer and license status
         if cust_status != 'active':
@@ -2570,7 +2587,36 @@ def suspend_online_license(license_id):
     
     now = datetime.now().isoformat()
     cursor.execute('UPDATE customer_licenses SET status = ?, updated_at = ? WHERE id = ?', ('suspended', now, license_id))
-    cursor.execute('DELETE FROM license_sessions WHERE customer_id = (SELECT customer_id FROM customer_licenses WHERE id = ?)', (license_id,))
+    cursor.execute('DELETE FROM license_sessions WHERE customer_license_id = ?', (license_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    try:
+        username = session.get('username', 'system')
+    except:
+        username = 'system'
+    log_action('SUSPEND', 'license', license_id, None, 'License suspended', username)
+    
+    return jsonify({'success': True, 'message': 'License suspended'})
+
+
+
+@app.route('/api/licenses/online/<int:license_id>/cancel', methods=['PUT'])
+@login_required
+def cancel_online_license(license_id):
+    """Cancel a specific license"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT id FROM customer_licenses WHERE id = ?', (license_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'error': 'License not found'})
+    
+    now = datetime.now().isoformat()
+    cursor.execute('UPDATE customer_licenses SET status = ?, updated_at = ? WHERE id = ?', ('cancelled', now, license_id))
+    cursor.execute('DELETE FROM license_sessions WHERE customer_license_id = ?', (license_id,))
     
     conn.commit()
     conn.close()
@@ -2598,7 +2644,7 @@ def cancel_online_license(license_id):
     
     now = datetime.now().isoformat()
     cursor.execute('UPDATE customer_licenses SET status = ?, updated_at = ? WHERE id = ?', ('cancelled', now, license_id))
-    cursor.execute('DELETE FROM license_sessions WHERE customer_id = (SELECT customer_id FROM customer_licenses WHERE id = ?)', (license_id,))
+    cursor.execute('DELETE FROM license_sessions WHERE customer_license_id = ?', (license_id,))
     
     conn.commit()
     conn.close()
