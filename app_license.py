@@ -2625,34 +2625,6 @@ def cancel_online_license(license_id):
         username = session.get('username', 'system')
     except:
         username = 'system'
-    log_action('SUSPEND', 'license', license_id, None, 'License suspended', username)
-    
-    return jsonify({'success': True, 'message': 'License suspended'})
-
-
-@app.route('/api/licenses/online/<int:license_id>/cancel', methods=['PUT'])
-@login_required
-def cancel_online_license(license_id):
-    """Cancel a specific license"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT id FROM customer_licenses WHERE id = ?', (license_id,))
-    if not cursor.fetchone():
-        conn.close()
-        return jsonify({'success': False, 'error': 'License not found'})
-    
-    now = datetime.now().isoformat()
-    cursor.execute('UPDATE customer_licenses SET status = ?, updated_at = ? WHERE id = ?', ('cancelled', now, license_id))
-    cursor.execute('DELETE FROM license_sessions WHERE customer_license_id = ?', (license_id,))
-    
-    conn.commit()
-    conn.close()
-    
-    try:
-        username = session.get('username', 'system')
-    except:
-        username = 'system'
     log_action('CANCEL', 'license', license_id, None, 'License cancelled', username)
     
     return jsonify({'success': True, 'message': 'License cancelled'})

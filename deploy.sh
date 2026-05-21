@@ -20,7 +20,7 @@ echo "==> Saving image ..."
 docker save "$IMAGE" | gzip > "$TARBALL"
 
 echo "==> Copying image to $HOST ..."
-eval "$SCP_CMD" "$TARBALL" "$HOST:/tmp/license-server-latest.tar.gz"
+eval "$SCP_CMD" "$TARBALL" "$HOST:~/license-server-latest.tar.gz"
 
 echo "==> Deploying on remote ..."
 eval "$SSH_CMD" "$HOST" << 'EOF'
@@ -29,22 +29,26 @@ eval "$SSH_CMD" "$HOST" << 'EOF'
   docker stop license-server 2>/dev/null || true
   docker rm license-server 2>/dev/null || true
 
-  docker volume create license-server-data 2>/dev/null || true
+  # Kill anything else holding port 5001
+  fuser -k 5001/tcp 2>/dev/null || true
+  sleep 1
+
+  mkdir -p /home/cjach/Documents/license-server-data
 
   echo "  -> Loading new image"
-  docker load -i /tmp/license-server-latest.tar.gz
+  docker load -i ~/license-server-latest.tar.gz
 
   echo "  -> Starting new container"
   docker run -d \
     --name license-server \
     --restart unless-stopped \
-    -p 127.0.0.1:5001:5001 \
-    -v license-server-data:/app/data \
+    -p 5001:5001 \
+    -v /home/cjach/Documents/license-server-data:/app/data \
     -e LICENSE_DATA_DIR=/app/data \
     license-server:latest
 
   echo "  -> Cleaning up"
-  rm /tmp/license-server-latest.tar.gz
+  rm ~/license-server-latest.tar.gz
 
   echo "  -> Status"
   docker ps --filter name=license-server --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
