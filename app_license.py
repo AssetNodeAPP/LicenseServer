@@ -1928,7 +1928,7 @@ def activate_license():
                    c.name, c.customer_number, c.status
             FROM customer_licenses cl
             JOIN customers c ON cl.customer_id = c.id
-            WHERE cl.license_key = ? AND cl.status = 'active'
+            WHERE cl.license_key = ? AND cl.status IN ('ready', 'active')
         ''', (license_key,))
         license_record = cursor.fetchone()
         
@@ -1952,6 +1952,8 @@ def activate_license():
         # --- MAC validation and single-seat enforcement ---
         incoming_mac = mac_address.upper()
         
+        is_first_activation = False
+        
         if bound_mac and bound_mac.strip():
             # MAC-bound license: incoming MAC must match
             if incoming_mac != bound_mac.upper():
@@ -1972,6 +1974,8 @@ def activate_license():
                 if existing_mac and existing_mac != incoming_mac:
                     conn.close()
                     return jsonify({'success': False, 'error': 'License already activated on another machine'})
+            else:
+                is_first_activation = True
         
         # Generate session key (AES)
         session_key = Fernet.generate_key()
@@ -2001,7 +2005,14 @@ def activate_license():
         ''', (customer_id, lic_id, session_key_b64, mac_address, now, now, expires_at))
         
         # Permanently bind the MAC to the license after first activation
-        cursor.execute('UPDATE customer_licenses SET mac_address = ?, updated_at = ? WHERE id = ?', (mac_address, now, lic_id))
+        cursor.execute('UPDATE customer_licenses SET mac_address = ?, status = \'active\', updated_at = ? WHERE id = ?', (mac_address, now, lic_id))
+        
+        if is_first_activation:
+            try:
+                username = 'system'
+            except:
+                username = 'system'
+            log_action('ACTIVATE', 'license', lic_id, company_name, f'License activated on MAC: {mac_address}', username)
         
         conn.commit()
         conn.close()
@@ -2248,7 +2259,7 @@ def create_customer():
                 'customer_number': customer_number,
                 'name': name,
                 'email': email,
-                'status': 'active',
+            'status': 'ready',
                 'created_at': now[:10]
             }
         })
@@ -2542,7 +2553,7 @@ def generate_online_license():
     
     cursor.execute('''
         INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, mac_address, auto_renew, stripe_price_id, renewal_interval, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, 'ready', ?, ?, ?, ?, ?, ?)
     ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, 1 if auto_renew else 0, stripe_price_id, renewal_interval, now, now))
     
     license_id = cursor.lastrowid

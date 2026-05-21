@@ -227,6 +227,11 @@
             color: #059669;
         }
         
+        .status-ready {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563eb;
+        }
+        
         .status-expired {
             background: rgba(239, 68, 68, 0.1);
             color: #dc2626;
@@ -346,7 +351,23 @@
         }
         
         .modal-xl-custom {
-            max-width: 1400px;
+            max-width: 95%;
+            max-height: 90vh;
+        }
+        
+        #customerDetailModal .modal-content {
+            max-height: 90vh;
+        }
+        
+        #customerDetailModal .modal-body {
+            overflow-y: auto;
+            max-height: calc(90vh - 140px);
+        }
+        
+        #customerDetailModal .license-actions {
+            position: sticky;
+            right: 0;
+            z-index: 10;
         }
         
         #logsTable td, #logsTable th {
@@ -354,8 +375,168 @@
         }
         
         @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container-main {
+                max-width: 100%;
+            }
+            
+            .page-header {
+                padding: 15px;
+                border-radius: 12px;
+            }
+            
+            .page-header h1 {
+                font-size: 1.4rem;
+            }
+            
+            .page-header .d-flex {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .page-header .d-flex > div:last-child {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .warning-banner {
+                font-size: 0.85rem;
+                padding: 10px;
+            }
+            
+            .card-body {
+                padding: 15px;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+            
             .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 10px;
+            }
+            
+            .stat-card {
+                padding: 12px;
+            }
+            
+            .stat-card .number {
+                font-size: 1.5rem;
+            }
+            
+            .d-flex.gap-3.mb-4 {
+                flex-direction: column;
+                gap: 10px !important;
+            }
+            
+            #customerSearch {
+                width: 100%;
+            }
+            
+            #customerStatusFilter {
+                width: 100% !important;
+            }
+            
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .table {
+                font-size: 0.85rem;
+                min-width: 700px;
+            }
+            
+            .table thead th,
+            .table tbody td {
+                padding: 10px 8px;
+                white-space: nowrap;
+            }
+            
+            .action-buttons .dropdown-toggle {
+                padding: 4px 8px;
+                font-size: 0.8rem;
+            }
+            
+            .d-flex.flex-wrap.gap-1 {
+                flex-wrap: wrap;
+                gap: 4px !important;
+            }
+            
+            .d-flex.flex-wrap.gap-1 .btn {
+                padding: 4px 8px;
+                font-size: 0.75rem;
+            }
+            
+            .modal-xl-custom {
+                max-width: 100%;
+                margin: 0;
+            }
+            
+            .modal-body {
+                padding: 10px;
+            }
+            
+            #customerDetailModal .modal-body {
+                max-height: calc(85vh - 120px);
+            }
+            
+            #customerDetailContent .row {
+                flex-direction: column;
+            }
+            
+            #customerDetailContent .col-md-4,
+            #customerDetailContent .col-md-8 {
+                width: 100%;
+                max-width: 100%;
+                flex: 0 0 100%;
+            }
+            
+            .btn-sm {
+                padding: 4px 8px;
+                font-size: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            body {
+                padding: 5px;
+            }
+            
+            .page-header {
+                padding: 12px;
+                border-radius: 10px;
+            }
+            
+            .page-header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            
+            .stat-card .number {
+                font-size: 1.2rem;
+            }
+            
+            .stat-card .label {
+                font-size: 0.75rem;
+            }
+            
+            .nav-tabs .nav-link {
+                padding: 6px 8px;
+                font-size: 0.75rem;
+            }
+            
+            .table {
+                font-size: 0.75rem;
+                min-width: 600px;
             }
         }
     </style>
@@ -1290,7 +1471,7 @@
                             <td>${customer.created_at}</td>
                             <td class="action-buttons">
                                 <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="window">
                                         <i class="bi bi-gear"></i>
                                     </button>
                                     <ul class="dropdown-menu">
@@ -1406,7 +1587,7 @@
                         </td>
                         <td>${lic.expiry_date}</td>
                         <td>
-                            <span class="status-badge ${lic.status === 'active' ? 'status-active' : 'status-expired'}">${lic.status}</span>
+                            <span class="status-badge ${lic.status === 'active' ? 'status-active' : lic.status === 'ready' ? 'status-ready' : 'status-expired'}">${lic.status}</span>
                             ${autoRenewBadge}
                             ${stripeBadge}
                         </td>
@@ -1421,6 +1602,7 @@
                                     <i class="bi bi-envelope"></i> Email
                                 </button>
                                 ${lic.status === 'active' ? `<button class="btn btn-sm btn-outline-danger" onclick="suspendLicense(${lic.id})" title="Suspend"><i class="bi bi-pause"></i></button>` : ''}
+                                ${lic.status === 'active' ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivateLicense(${lic.id})" title="Deactivate"><i class="bi bi-x-circle"></i></button>` : ''}
                                 ${lic.status !== 'active' && lic.status !== 'cancelled' ? `<button class="btn btn-sm btn-outline-success" onclick="reactivateLicense(${lic.id})" title="Reactivate"><i class="bi bi-play"></i></button>` : ''}
                                 <button class="btn btn-sm btn-outline-secondary" id="autoRenewBtn_${lic.id}" onclick="toggleAutoRenew(${lic.id}, ${!lic.auto_renew})" title="${lic.auto_renew ? 'Disable' : 'Enable'} auto-renew">
                                     <i class="bi bi-${lic.auto_renew ? 'pause' : 'play'}-circle"></i>
@@ -1810,6 +1992,22 @@
                 const result = await response.json();
                 if (result.success) {
                     alert('License suspended');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function deactivateLicense(licenseId) {
+            if (!confirm('Are you sure you want to deactivate this license? This will cancel it and remove any active sessions.')) return;
+            try {
+                const response = await fetch(`/api/licenses/online/${licenseId}/cancel`, {method: 'PUT'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('License deactivated');
                     refreshCustomers();
                 } else {
                     alert('Error: ' + result.error);
