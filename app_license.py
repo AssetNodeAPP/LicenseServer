@@ -329,6 +329,8 @@ def init_database():
         cursor.execute("ALTER TABLE customer_licenses ADD COLUMN stripe_price_id TEXT")
     if 'renewal_interval' not in columns:
         cursor.execute("ALTER TABLE customer_licenses ADD COLUMN renewal_interval TEXT DEFAULT 'yearly'")
+    if 'nickname' not in columns:
+        cursor.execute("ALTER TABLE customer_licenses ADD COLUMN nickname TEXT")
 
     conn.commit()
     conn.close()
@@ -2173,14 +2175,14 @@ def get_customers():
         
         # Get licenses for this customer
         cursor.execute('''
-            SELECT id, license_key, expiry_date, status, mac_address, created_at, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval
+            SELECT id, license_key, expiry_date, status, mac_address, created_at, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, nickname
             FROM customer_licenses WHERE customer_id = ?
         ''', (cust_id,))
         licenses = cursor.fetchall()
         
         license_list = []
         for lic in licenses:
-            lic_id, key, exp, lic_status, mac, created_at, auto_renew, stripe_sub, stripe_price, renewal_interval = lic
+            lic_id, key, exp, lic_status, mac, created_at, auto_renew, stripe_sub, stripe_price, renewal_interval, nickname = lic
             license_list.append({
                 'id': lic_id,
                 'license_key_masked': key[:8] + '****' + key[-4:] if len(key) > 12 else '****',
@@ -2190,7 +2192,8 @@ def get_customers():
                 'created_at': created_at,
                 'auto_renew': bool(auto_renew),
                 'stripe_subscription_id': stripe_sub,
-                'renewal_interval': renewal_interval
+                'renewal_interval': renewal_interval,
+                'nickname': nickname
             })
         
         results.append({
@@ -2288,14 +2291,14 @@ def get_customer(customer_id):
     cust_id, cust_num, name, email, status, stripe_sub, created, updated = c
     
     cursor.execute('''
-        SELECT id, license_key, encrypted_data, expiry_date, status, mac_address, created_at, updated_at, auto_renew, stripe_subscription_id, renewal_interval
+        SELECT id, license_key, encrypted_data, expiry_date, status, mac_address, created_at, updated_at, auto_renew, stripe_subscription_id, renewal_interval, nickname
         FROM customer_licenses WHERE customer_id = ?
     ''', (cust_id,))
     licenses = cursor.fetchall()
     
     license_list = []
     for lic in licenses:
-        lic_id, key, enc_data, exp, lic_status, mac, created_at, updated_at, auto_renew, stripe_sub, renewal_interval = lic
+        lic_id, key, enc_data, exp, lic_status, mac, created_at, updated_at, auto_renew, stripe_sub, renewal_interval, nickname = lic
         license_list.append({
             'id': lic_id,
             'license_key': key,
@@ -2306,7 +2309,8 @@ def get_customer(customer_id):
             'updated_at': updated_at,
             'auto_renew': bool(auto_renew),
             'stripe_subscription_id': stripe_sub,
-            'renewal_interval': renewal_interval
+            'renewal_interval': renewal_interval,
+            'nickname': nickname
         })
     
     conn.close()
@@ -2522,6 +2526,7 @@ def generate_online_license():
     auto_renew = data.get('auto_renew', False)
     stripe_price_id = data.get('stripe_price_id', '')
     renewal_interval = data.get('renewal_interval', 'yearly')
+    nickname = data.get('nickname', '').strip()[:50]
     
     if not customer_id:
         return jsonify({'success': False, 'error': 'Customer ID is required'})
@@ -2552,9 +2557,9 @@ def generate_online_license():
     encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
     
     cursor.execute('''
-        INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, mac_address, auto_renew, stripe_price_id, renewal_interval, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'ready', ?, ?, ?, ?, ?, ?)
-    ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, 1 if auto_renew else 0, stripe_price_id, renewal_interval, now, now))
+        INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, mac_address, auto_renew, stripe_price_id, renewal_interval, nickname, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'ready', ?, ?, ?, ?, ?, ?, ?)
+    ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, 1 if auto_renew else 0, stripe_price_id, renewal_interval, nickname if nickname else None, now, now))
     
     license_id = cursor.lastrowid
     
@@ -2578,7 +2583,8 @@ def generate_online_license():
             'expiry_date': expiry_date[:10],
             'mac_address': mac_address if bind_to_mac else None,
             'status': 'active',
-            'auto_renew': auto_renew
+            'auto_renew': auto_renew,
+            'nickname': nickname if nickname else None
         }
     })
 
@@ -2711,6 +2717,36 @@ def extend_online_license(license_id):
     log_action('EXTEND', 'license', license_id, None, f'Extended by {additional_days} days. New expiry: {new_expiry[:10]}', username)
     
     return jsonify({'success': True, 'expiry_date': new_expiry[:10]})
+
+
+@app.route('/api/licenses/online/<int:license_id>/nickname', methods=['PUT'])
+@login_required
+def update_license_nickname(license_id):
+    """Update license nickname"""
+    data = request.get_json()
+    nickname = data.get('nickname', '').strip()[:50]
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT id FROM customer_licenses WHERE id = ?', (license_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'error': 'License not found'})
+
+    now = datetime.now().isoformat()
+    cursor.execute('UPDATE customer_licenses SET nickname = ?, updated_at = ? WHERE id = ?', (nickname if nickname else None, now, license_id))
+
+    conn.commit()
+    conn.close()
+
+    try:
+        username = session.get('username', 'system')
+    except:
+        username = 'system'
+    log_action('UPDATE', 'license', license_id, None, f'Nickname set to: {nickname or "(cleared)"}', username)
+
+    return jsonify({'success': True, 'nickname': nickname if nickname else None})
 
 
 @app.route('/api/licenses/online/<int:license_id>/renew', methods=['POST'])

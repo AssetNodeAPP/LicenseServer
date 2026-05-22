@@ -915,6 +915,11 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Nickname (Optional)</label>
+                        <input type="text" class="form-control" id="licenseNickname" placeholder="e.g., Production Server" maxlength="50">
+                        <div class="form-text">A friendly name to identify this license</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">MAC Address (Optional)</label>
                         <input type="text" class="form-control" id="licenseMacAddress" placeholder="AA:BB:CC:DD:EE:FF">
                         <div class="form-text">Leave empty to allow any MAC</div>
@@ -1585,6 +1590,11 @@
                                 </button>
                             </div>
                         </td>
+                        <td>
+                            <span id="nicknameDisplay_${lic.id}" onclick="editNickname(${lic.id}, '${(lic.nickname || '').replace(/'/g, "\\'")}')" style="cursor:pointer;" title="Click to edit">
+                                ${lic.nickname || '<span class="text-muted">-</span>'}
+                            </span>
+                        </td>
                         <td>${lic.expiry_date}</td>
                         <td>
                             <span class="status-badge ${lic.status === 'active' ? 'status-active' : lic.status === 'ready' ? 'status-ready' : 'status-expired'}">${lic.status}</span>
@@ -1631,10 +1641,10 @@
                             </button>
                             <table class="table table-sm">
                                 <thead>
-                                    <tr><th style="width:18%">Key</th><th style="width:10%">Expires</th><th style="width:18%">Status</th><th style="width:10%">MAC</th><th style="width:10%">Interval</th><th style="width:34%">Actions</th></tr>
+                                    <tr><th style="width:18%">Key</th><th style="width:10%">Nickname</th><th style="width:10%">Expires</th><th style="width:15%">Status</th><th style="width:10%">MAC</th><th style="width:8%">Interval</th><th style="width:29%">Actions</th></tr>
                                 </thead>
                                 <tbody>
-                                    ${licensesHtml || '<tr><td colspan="6" class="text-muted">No licenses</td></tr>'}
+                                    ${licensesHtml || '<tr><td colspan="7" class="text-muted">No licenses</td></tr>'}
                                 </tbody>
                             </table>
                         </div>
@@ -1831,6 +1841,52 @@
             }
         }
         
+        function editNickname(licenseId, currentNickname) {
+            var displayEl = document.getElementById('nicknameDisplay_' + licenseId);
+            var inputHtml = `<input type="text" class="form-control form-control-sm" id="nicknameInput_${licenseId}" value="${currentNickname.replace(/"/g, '&quot;')}" maxlength="50" onkeydown="handleNicknameKeydown(event, ${licenseId})" onblur="saveNickname(${licenseId})">`;
+            displayEl.innerHTML = inputHtml;
+            var input = document.getElementById('nicknameInput_' + licenseId);
+            input.focus();
+            input.select();
+        }
+        
+        function handleNicknameKeydown(event, licenseId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                saveNickname(licenseId);
+            } else if (event.key === 'Escape') {
+                refreshCustomers();
+            }
+        }
+        
+        async function saveNickname(licenseId) {
+            var input = document.getElementById('nicknameInput_' + licenseId);
+            if (!input) return;
+            var newNickname = input.value.trim();
+            
+            try {
+                const response = await fetch(`/api/licenses/online/${licenseId}/nickname`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nickname: newNickname})
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    var displayEl = document.getElementById('nicknameDisplay_' + licenseId);
+                    displayEl.innerHTML = result.nickname || '<span class="text-muted">-</span>';
+                    var escapedNickname = (result.nickname || '').replace(/'/g, "\\'");
+                    displayEl.onclick = function() { editNickname(licenseId, escapedNickname); };
+                } else {
+                    alert('Error: ' + result.error);
+                    refreshCustomers();
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+                refreshCustomers();
+            }
+        }
+        
         async function suspendCustomer(customerId) {
             if (!confirm('Suspend this customer? They will no longer be able to use their license.')) return;
             
@@ -1916,6 +1972,7 @@
                 });
                 
                 document.getElementById('licenseMacAddress').value = '';
+                document.getElementById('licenseNickname').value = '';
                 document.getElementById('licenseDays').value = '365';
                 document.getElementById('licenseBindMac').checked = true;
                 document.getElementById('licenseAutoRenew').checked = false;
@@ -1932,6 +1989,7 @@
         async function generateOnlineLicense() {
             const customerId = document.getElementById('licenseCustomerSelect').value;
             const macAddress = document.getElementById('licenseMacAddress').value.trim();
+            const nickname = document.getElementById('licenseNickname').value.trim();
             const expiryDays = parseInt(document.getElementById('licenseDays').value) || 365;
             const bindToMac = document.getElementById('licenseBindMac').checked;
             const autoRenew = document.getElementById('licenseAutoRenew').checked;
@@ -1950,6 +2008,7 @@
                     body: JSON.stringify({
                         customer_id: parseInt(customerId),
                         mac_address: macAddress,
+                        nickname: nickname,
                         expiry_days: expiryDays,
                         bind_to_mac: bindToMac,
                         auto_renew: autoRenew,
