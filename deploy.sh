@@ -9,8 +9,8 @@ SCP_CMD="scp"
 SSH_PASS="${SSH_PASS:-}"
 
 if [ -n "$SSH_PASS" ]; then
-  SSH_CMD="sshpass -p '$SSH_PASS' ssh"
-  SCP_CMD="sshpass -p '$SSH_PASS' scp"
+  SSH_CMD="sshpass -p '$SSH_PASS' ssh -o StrictHostKeyChecking=no"
+  SCP_CMD="sshpass -p '$SSH_PASS' scp -o StrictHostKeyChecking=no"
 fi
 
 echo "==> Building image for linux/amd64 ..."
