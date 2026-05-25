@@ -1903,9 +1903,10 @@ def activate_license():
         data = request.get_json()
         encrypted_data = data.get('encrypted_data')
         mac_address = data.get('mac_address', '').strip()
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ',' in ip_address:
-            ip_address = ip_address.split(',')[0].strip()
+        header_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ',' in header_ip:
+            header_ip = header_ip.split(',')[0].strip()
+        ip_address = data.get('ip_address', '').strip() or header_ip
         
         if not encrypted_data:
             return jsonify({'success': False, 'error': 'Missing encrypted data'})
@@ -2024,7 +2025,7 @@ def activate_license():
         ''', (customer_id, lic_id, session_key_b64, mac_address, ip_address, now, now, expires_at))
         
         # Permanently bind the MAC to the license after first activation
-        cursor.execute('UPDATE customer_licenses SET mac_address = ?, status = \'active\', updated_at = ? WHERE id = ?', (mac_address, now, lic_id))
+        cursor.execute('UPDATE customer_licenses SET mac_address = ?, ip_address = ?, status = \'active\', updated_at = ? WHERE id = ?', (mac_address, ip_address, now, lic_id))
         
         if is_first_activation:
             try:
@@ -2086,8 +2087,7 @@ def check_license():
         ''', (datetime.now().isoformat(),))
         
         sessions = cursor.fetchall()
-        conn.close()
-        
+
         decrypted_payload = None
         matched_session = None
         
@@ -2112,7 +2112,7 @@ def check_license():
         
         # MAC re-verification: ensure client is still on the same machine that activated
         client_mac = decrypted_payload.get('mac_address', data.get('mac_address', '')).upper()
-        client_ip = decrypted_payload.get('ip_address', '')
+        client_ip = ip_address
         if client_mac and session_mac and session_mac.upper() != client_mac:
             return jsonify({
                 'status': 'rejected',
@@ -2148,8 +2148,7 @@ def check_license():
         
         # Update last check-in and extend session expiry
         new_expires_at = (datetime.now() + timedelta(days=365)).isoformat()
-        stored_ip = client_ip or ip_address
-        cursor.execute('UPDATE license_sessions SET last_check_in = ?, expires_at = ?, ip_address = ? WHERE id = ?', (datetime.now().isoformat(), new_expires_at, stored_ip, session_id))
+        cursor.execute('UPDATE license_sessions SET last_check_in = ?, expires_at = ?, ip_address = ? WHERE id = ?', (datetime.now().isoformat(), new_expires_at, client_ip, session_id))
         conn.commit()
         conn.close()
         
@@ -2189,9 +2188,9 @@ def get_customers():
         SELECT id, customer_number, name, email, status, stripe_subscription_id, created_at, updated_at
         FROM customers WHERE {where_clause} ORDER BY created_at DESC
     ''', params)
-    
+
     customers = cursor.fetchall()
-    
+
     results = []
     for c in customers:
         cust_id, cust_num, name, email, status, stripe_sub, created, updated = c
@@ -2251,34 +2250,34 @@ def create_customer():
         
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
-        
+
         if not name:
             return jsonify({'success': False, 'error': 'Name is required'}), 400
-        
+
         if email and not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             return jsonify({'success': False, 'error': 'Invalid email format'}), 400
-        
+
         customer_number = generate_customer_number()
         now = datetime.now().isoformat()
-        
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO customers (customer_number, name, email, status, created_at, updated_at)
             VALUES (?, ?, ?, 'active', ?, ?)
         ''', (customer_number, name, email, now, now))
-        
+
         customer_id = cursor.lastrowid
         conn.commit()
         conn.close()
-        
+
         try:
             username = session.get('username', 'system')
         except:
             username = 'system'
         log_action('CREATE', 'customer', customer_id, name, f"Customer number: {customer_number}, Email: {email or 'N/A'}", username)
-        
+
         return jsonify({
             'success': True,
             'customer': {
@@ -2286,7 +2285,7 @@ def create_customer():
                 'customer_number': customer_number,
                 'name': name,
                 'email': email,
-            'status': 'ready',
+                'status': 'active',
                 'created_at': now[:10]
             }
         })
@@ -2306,12 +2305,12 @@ def get_customer(customer_id):
         SELECT id, customer_number, name, email, status, stripe_subscription_id, created_at, updated_at
         FROM customers WHERE id = ?
     ''', (customer_id,))
-    
+
     c = cursor.fetchone()
     if not c:
         conn.close()
         return jsonify({'success': False, 'error': 'Customer not found'})
-    
+
     cust_id, cust_num, name, email, status, stripe_sub, created, updated = c
     
     cursor.execute('''
@@ -2360,38 +2359,41 @@ def get_customer(customer_id):
 def update_customer(customer_id):
     """Update customer details"""
     data = request.get_json()
-    
+
     name = data.get('name', '').strip()
     email = data.get('email', '').strip()
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute('SELECT id, name, email FROM customers WHERE id = ?', (customer_id,))
+
+    cursor.execute('''
+        SELECT id, name, email
+        FROM customers WHERE id = ?
+    ''', (customer_id,))
     existing = cursor.fetchone()
     if not existing:
         conn.close()
         return jsonify({'success': False, 'error': 'Customer not found'})
-    
+
     now = datetime.now().isoformat()
     cursor.execute('''
-        UPDATE customers SET name = ?, email = ?, updated_at = ? WHERE id = ?
+        UPDATE customers
+        SET name = ?, email = ?, updated_at = ?
+        WHERE id = ?
     ''', (name, email, now, customer_id))
-    
+
     conn.commit()
     conn.close()
-    
+
     changes = []
-    if existing[1] != name:
-        changes.append(f"Name: '{existing[1]}' -> '{name}'")
-    if existing[2] != email:
-        changes.append(f"Email: '{existing[2]}' -> '{email or 'N/A'}'")
+    if existing[1] != name:  changes.append(f"Name: '{existing[1]}' -> '{name}'")
+    if existing[2] != email: changes.append(f"Email: '{existing[2]}' -> '{email or 'N/A'}'")
     try:
         username = session.get('username', 'system')
     except:
         username = 'system'
     log_action('UPDATE', 'customer', customer_id, name, '; '.join(changes) if changes else 'No changes', username)
-    
+
     return jsonify({'success': True, 'message': 'Customer updated'})
 
 
@@ -2546,9 +2548,6 @@ def generate_online_license():
     
     customer_id = data.get('customer_id')
     mac_address = data.get('mac_address', '').strip()
-    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if ',' in ip_address:
-        ip_address = ip_address.split(',')[0].strip()
     expiry_days = int(data.get('expiry_days', 365))
     bind_to_mac = data.get('bind_to_mac', True)
     auto_renew = data.get('auto_renew', False)
@@ -2587,7 +2586,7 @@ def generate_online_license():
     cursor.execute('''
         INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, mac_address, ip_address, auto_renew, stripe_price_id, renewal_interval, nickname, created_at, updated_at)
         VALUES (?, ?, ?, ?, 'ready', ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, ip_address, 1 if auto_renew else 0, stripe_price_id, renewal_interval, nickname if nickname else None, now, now))
+    ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, None, 1 if auto_renew else 0, stripe_price_id, renewal_interval, nickname if nickname else None, now, now))
     
     license_id = cursor.lastrowid
     
@@ -2673,6 +2672,36 @@ def cancel_online_license(license_id):
     log_action('CANCEL', 'license', license_id, None, 'License cancelled', username)
     
     return jsonify({'success': True, 'message': 'License cancelled'})
+
+
+@app.route('/api/licenses/online/<int:license_id>', methods=['DELETE'])
+@login_required
+def delete_online_license(license_id):
+    """Permanently delete a specific license"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT id, license_key, customer_id FROM customer_licenses WHERE id = ?', (license_id,))
+    lic = cursor.fetchone()
+    if not lic:
+        conn.close()
+        return jsonify({'success': False, 'error': 'License not found'})
+
+    lic_id, lic_key, cust_id = lic
+
+    cursor.execute('DELETE FROM license_sessions WHERE customer_license_id = ?', (license_id,))
+    cursor.execute('DELETE FROM customer_licenses WHERE id = ?', (license_id,))
+
+    conn.commit()
+    conn.close()
+
+    try:
+        username = session.get('username', 'system')
+    except:
+        username = 'system'
+    log_action('DELETE', 'license', lic_id, None, f'License {lic_key} permanently deleted', username)
+
+    return jsonify({'success': True, 'message': 'License permanently deleted'})
 
 
 @app.route('/api/licenses/online/<int:license_id>/reactivate', methods=['PUT'])
@@ -2957,22 +2986,39 @@ def toggle_auto_renew(license_id):
 @login_required
 def get_all_renewals():
     """Get all renewals with customer/license info"""
+    search = request.args.get('search', '')
+    page = max(1, int(request.args.get('page', 1)))
+    per_page = max(1, int(request.args.get('per_page', 25)))
+    offset = (page - 1) * per_page
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT r.renewal_id, r.generated_date, r.additional_days, r.previous_expiry, r.new_expiry,
-               c.name, c.customer_number, cl.license_key
+
+    base_query = '''
         FROM renewals r
         JOIN customer_licenses cl ON r.license_id = 'online_' || cl.id
         JOIN customers c ON cl.customer_id = c.id
-        ORDER BY r.generated_date DESC
-        LIMIT 100
-    ''')
-    
+        WHERE 1=1
+    '''
+    params = []
+    if search:
+        base_query += ' AND (c.name LIKE ? OR c.customer_number LIKE ? OR cl.license_key LIKE ?)'
+        search_param = f'%{search}%'
+        params.extend([search_param, search_param, search_param])
+
+    cursor.execute('SELECT COUNT(*) ' + base_query, params)
+    total = cursor.fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+
+    cursor.execute(
+        'SELECT r.renewal_id, r.generated_date, r.additional_days, r.previous_expiry, r.new_expiry, c.name, c.customer_number, cl.license_key'
+        + base_query + ' ORDER BY r.generated_date DESC LIMIT ? OFFSET ?',
+        params + [per_page, offset]
+    )
+
     renewals = cursor.fetchall()
     conn.close()
-    
+
     results = []
     for r in renewals:
         results.append({
@@ -2985,8 +3031,11 @@ def get_all_renewals():
             'customer_number': r[6],
             'license_key': r[7][:8] + '****' + r[7][-4:] if len(r[7]) > 12 else '****'
         })
-    
-    return jsonify({'renewals': results})
+
+    return jsonify({
+        'renewals': results,
+        'pagination': {'page': page, 'per_page': per_page, 'total': total, 'total_pages': total_pages}
+    })
 
 
 @app.route('/api/logs', methods=['GET'])
@@ -2996,32 +3045,39 @@ def get_audit_logs():
     action_filter = request.args.get('action', '')
     entity_filter = request.args.get('entity', '')
     search = request.args.get('search', '')
-    limit = int(request.args.get('limit', 200))
-    
+    page = max(1, int(request.args.get('page', 1)))
+    per_page = max(1, int(request.args.get('per_page', 50)))
+    offset = (page - 1) * per_page
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    query = 'SELECT id, timestamp, action, entity_type, entity_id, entity_name, details, user FROM audit_logs WHERE 1=1'
+
+    where = 'WHERE 1=1'
     params = []
-    
+
     if action_filter:
-        query += ' AND action = ?'
+        where += ' AND action = ?'
         params.append(action_filter)
     if entity_filter:
-        query += ' AND entity_type = ?'
+        where += ' AND entity_type = ?'
         params.append(entity_filter)
     if search:
-        query += ' AND (entity_name LIKE ? OR details LIKE ? OR user LIKE ?)'
+        where += ' AND (entity_name LIKE ? OR details LIKE ? OR user LIKE ?)'
         search_param = f'%{search}%'
         params.extend([search_param, search_param, search_param])
-    
-    query += ' ORDER BY timestamp DESC LIMIT ?'
-    params.append(limit)
-    
-    cursor.execute(query, params)
+
+    cursor.execute('SELECT COUNT(*) FROM audit_logs ' + where, params)
+    total = cursor.fetchone()[0]
+    total_pages = max(1, (total + per_page - 1) // per_page)
+
+    cursor.execute(
+        'SELECT id, timestamp, action, entity_type, entity_id, entity_name, details, user FROM audit_logs '
+        + where + ' ORDER BY timestamp DESC LIMIT ? OFFSET ?',
+        params + [per_page, offset]
+    )
     logs = cursor.fetchall()
     conn.close()
-    
+
     results = []
     for log in logs:
         results.append({
@@ -3034,8 +3090,11 @@ def get_audit_logs():
             'details': log[6] or '',
             'user': log[7] or 'system'
         })
-    
-    return jsonify({'logs': results})
+
+    return jsonify({
+        'logs': results,
+        'pagination': {'page': page, 'per_page': per_page, 'total': total, 'total_pages': total_pages}
+    })
 
 
 @app.route('/api/stripe/checkout-success', methods=['GET'])
@@ -4285,6 +4344,100 @@ def reconcile_stripe_customers():
     except Exception as e:
         print(f"Reconcile error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/map')
+@login_required
+def license_map():
+    user = current_user()
+    return render_template('license_map.html', current_user=user)
+
+
+@app.route('/api/map-data')
+@login_required
+def get_map_data():
+    """Return geolocated license session data for the map page."""
+    import urllib.request as _ur
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT
+                ls.id, ls.ip_address, ls.mac_address, ls.last_check_in,
+                c.customer_number, c.name, c.email, c.status,
+                cl.expiry_date, cl.status, cl.nickname, cl.license_key
+            FROM license_sessions ls
+            JOIN customers c ON ls.customer_id = c.id
+            JOIN customer_licenses cl ON cl.customer_id = c.id
+            ORDER BY ls.last_check_in DESC
+        ''')
+        rows = cursor.fetchall()
+        conn.close()
+
+        def geolocate_ip(ip):
+            try:
+                url = f'http://ip-api.com/json/{ip}?fields=status,lat,lon,city,country,countryCode'
+                req = _ur.Request(url, headers={'User-Agent': 'AssetNode-LicenseServer/1.0'})
+                with _ur.urlopen(req, timeout=5) as resp:
+                    geo = json.loads(resp.read().decode())
+                if geo.get('status') == 'success':
+                    return {
+                        'lat': geo['lat'], 'lon': geo['lon'],
+                        'city': geo.get('city', ''),
+                        'country': geo.get('country', ''),
+                        'countryCode': geo.get('countryCode', ''),
+                        'source': 'ip'
+                    }
+            except Exception:
+                pass
+            return None
+
+        PRIVATE_IPS = {'127.0.0.1', '172.17.0.1', '::1', 'localhost'}
+
+        def is_private(ip):
+            if not ip or ip in PRIVATE_IPS:
+                return True
+            return ip.startswith(('192.168.', '10.', '172.16.', '172.17.', 'fd', 'fe80'))
+
+        markers = []
+        for sid, ip, mac, last_ci, cnum, name, email, cstatus, expiry, lstatus, nickname, lkey in rows:
+
+            if not ip or is_private(ip):
+                continue
+            geo = geolocate_ip(ip)
+            if geo is None:
+                continue
+
+            days = None
+            if expiry:
+                try:
+                    days = (datetime.fromisoformat(expiry) - datetime.now()).days
+                except Exception:
+                    pass
+            markers.append({
+                'id': sid,
+                'lat': geo['lat'], 'lon': geo['lon'],
+                'city': geo['city'], 'country': geo['country'],
+                'countryCode': geo.get('countryCode', ''),
+                'geo_source': 'ip',
+                'ip': ip or '',
+                'mac': mac or '',
+                'customer_number': cnum,
+                'customer_name': name or '',
+                'customer_email': email or '',
+                'customer_status': cstatus,
+                'license_status': lstatus,
+                'nickname': nickname or '',
+                'expiry_date': expiry[:10] if expiry else '',
+                'days_remaining': days,
+                'last_checkin': (last_ci[:16].replace('T', ' ') if last_ci else 'Never'),
+                'license_key_masked': (lkey[:8] + '****' + lkey[-4:] if lkey and len(lkey) > 12 else '****')
+            })
+
+        return jsonify({'markers': markers})
+    except Exception as e:
+        return jsonify({'markers': [], 'error': str(e)})
 
 
 if __name__ == '__main__':

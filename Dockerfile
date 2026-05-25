@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements-docker.txt
 
 COPY *.py .
 COPY templates/ templates/
+COPY Static/ static/
 
 ENV LICENSE_DATA_DIR=/app/data
 

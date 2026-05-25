@@ -663,11 +663,15 @@ body {
                     <!-- Renewals Tab -->
                     <div class="tab-pane fade" id="renewals" role="tabpanel">
                         <div class="d-flex gap-3 mb-4">
-                            <button class="btn btn-outline-secondary" onclick="refreshRenewals()">
+                            <div class="search-box flex-grow-1">
+                                <i class="bi bi-search"></i>
+                                <input type="text" class="form-control" id="renewalSearch" placeholder="Search by customer name, number, or license key...">
+                            </div>
+                            <button class="btn btn-outline-secondary" onclick="renewalsCurrentPage=1;refreshRenewals()">
                                 <i class="bi bi-arrow-clockwise"></i> Refresh
                             </button>
                         </div>
-                        
+
                         <div class="table-container">
                             <table class="table" id="renewalsTable">
                                 <thead>
@@ -687,6 +691,10 @@ body {
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div id="renewalsPagination" class="d-flex justify-content-between align-items-center mt-3" style="display:none!important">
+                            <small class="text-muted" id="renewalsPaginationInfo"></small>
+                            <nav><ul class="pagination pagination-sm mb-0" id="renewalsPaginationList"></ul></nav>
                         </div>
                     </div>
                     
@@ -739,6 +747,10 @@ body {
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div id="logsPagination" class="d-flex justify-content-between align-items-center mt-3" style="display:none!important">
+                            <small class="text-muted" id="logsPaginationInfo"></small>
+                            <nav><ul class="pagination pagination-sm mb-0" id="logsPaginationList"></ul></nav>
                         </div>
                     </div>
                     
@@ -864,7 +876,7 @@ body {
                         <label class="form-label">Email Address</label>
                         <input type="email" class="form-control" id="newCustomerEmail" placeholder="customer@example.com">
                     </div>
-                    <div class="alert alert-info">
+                    <div class="alert alert-info mt-3 mb-0">
                         <i class="bi bi-info-circle"></i> A unique 10-digit customer number will be auto-generated.
                     </div>
                 </div>
@@ -1190,9 +1202,10 @@ body {
                 });
             });
             
-            document.getElementById('logSearch')?.addEventListener('input', debounce(refreshLogs, 400));
-            document.getElementById('logActionFilter')?.addEventListener('change', refreshLogs);
-            document.getElementById('logEntityFilter')?.addEventListener('change', refreshLogs);
+            document.getElementById('logSearch')?.addEventListener('input', debounce(() => { logsCurrentPage = 1; refreshLogs(); }, 400));
+            document.getElementById('logActionFilter')?.addEventListener('change', () => { logsCurrentPage = 1; refreshLogs(); });
+            document.getElementById('logEntityFilter')?.addEventListener('change', () => { logsCurrentPage = 1; refreshLogs(); });
+            document.getElementById('renewalSearch')?.addEventListener('input', debounce(() => { renewalsCurrentPage = 1; refreshRenewals(); }, 400));
         });
         
         function debounce(func, wait) {
@@ -1205,6 +1218,65 @@ body {
                 clearTimeout(timeout);
                 timeout = setTimeout(later, wait);
             };
+        }
+
+        let renewalsCurrentPage = 1;
+        const RENEWALS_PER_PAGE = 25;
+        let logsCurrentPage = 1;
+        const LOGS_PER_PAGE = 50;
+
+        function renderPagination(listId, infoId, pagination, onPageChange) {
+            const { page, per_page, total, total_pages } = pagination;
+            const container = document.getElementById(listId).closest('[id$="Pagination"]');
+            const start = total === 0 ? 0 : (page - 1) * per_page + 1;
+            const end = Math.min(page * per_page, total);
+            document.getElementById(infoId).textContent =
+                total === 0 ? 'No results' : `Showing ${start}–${end} of ${total}`;
+            if (total === 0) { container.style.display = 'none'; return; }
+            container.style.removeProperty('display');
+
+            const ul = document.getElementById(listId);
+            ul.innerHTML = '';
+
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item${page <= 1 ? ' disabled' : ''}`;
+            prevLi.innerHTML = '<a class="page-link" href="#">&laquo;</a>';
+            if (page > 1) prevLi.querySelector('a').addEventListener('click', e => { e.preventDefault(); onPageChange(page - 1); });
+            ul.appendChild(prevLi);
+
+            const delta = 2;
+            const rangeStart = Math.max(1, page - delta);
+            const rangeEnd = Math.min(total_pages, page + delta);
+            if (rangeStart > 1) {
+                ul.appendChild(makePageItem(1, page, onPageChange));
+                if (rangeStart > 2) ul.appendChild(makeEllipsis());
+            }
+            for (let p = rangeStart; p <= rangeEnd; p++) ul.appendChild(makePageItem(p, page, onPageChange));
+            if (rangeEnd < total_pages) {
+                if (rangeEnd < total_pages - 1) ul.appendChild(makeEllipsis());
+                ul.appendChild(makePageItem(total_pages, page, onPageChange));
+            }
+
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item${page >= total_pages ? ' disabled' : ''}`;
+            nextLi.innerHTML = '<a class="page-link" href="#">&raquo;</a>';
+            if (page < total_pages) nextLi.querySelector('a').addEventListener('click', e => { e.preventDefault(); onPageChange(page + 1); });
+            ul.appendChild(nextLi);
+        }
+
+        function makePageItem(p, currentPage, onPageChange) {
+            const li = document.createElement('li');
+            li.className = `page-item${p === currentPage ? ' active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#">${p}</a>`;
+            if (p !== currentPage) li.querySelector('a').addEventListener('click', e => { e.preventDefault(); onPageChange(p); });
+            return li;
+        }
+
+        function makeEllipsis() {
+            const li = document.createElement('li');
+            li.className = 'page-item disabled';
+            li.innerHTML = '<span class="page-link">…</span>';
+            return li;
         }
         
         async function loadSmtpSettings() {
@@ -1532,12 +1604,9 @@ body {
         async function createCustomer() {
             const name = document.getElementById('newCustomerName').value.trim();
             const email = document.getElementById('newCustomerEmail').value.trim();
-            
-            if (!name) {
-                alert('Please enter a customer name');
-                return;
-            }
-            
+
+            if (!name) { alert('Please enter a customer name'); return; }
+
             try {
                 const response = await fetch('/api/customers', {
                     method: 'POST',
@@ -1545,7 +1614,6 @@ body {
                     body: JSON.stringify({name, email})
                 });
                 const result = await response.json();
-                
                 if (result.success) {
                     bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')).hide();
                     alert(`Customer created!\n\nCustomer Number: ${result.customer.customer_number}\n\nShare this number with the customer for activation.`);
@@ -1619,6 +1687,7 @@ body {
                                 <button class="btn btn-sm btn-outline-secondary" id="autoRenewBtn_${lic.id}" onclick="toggleAutoRenew(${lic.id}, ${!lic.auto_renew})" title="${lic.auto_renew ? 'Disable' : 'Enable'} auto-renew">
                                     <i class="bi bi-${lic.auto_renew ? 'pause' : 'play'}-circle"></i>
                                 </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteLicense(${lic.id}, '${lic.license_key.replace(/'/g, "\\'")}')" title="Delete permanently"><i class="bi bi-trash"></i></button>
                             </div>
                         </td>
                     </tr>
@@ -1627,14 +1696,39 @@ body {
                 document.getElementById('customerDetailContent').innerHTML = `
                     <div class="row">
                         <div class="col-md-4">
-                            <h5>Customer Information</h5>
-                            <table class="table table-sm">
-                                <tr><td><strong>Customer Number</strong></td><td><code>${c.customer_number}</code></td></tr>
-                                <tr><td><strong>Name</strong></td><td>${c.name}</td></tr>
-                                <tr><td><strong>Email</strong></td><td>${c.email || 'N/A'}</td></tr>
-                                <tr><td><strong>Status</strong></td><td><span class="status-badge ${c.status === 'active' ? 'status-active' : 'status-expired'}">${c.status}</span></td></tr>
-                                <tr><td><strong>Created</strong></td><td>${c.created_at}</td></tr>
-                            </table>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <h5 class="mb-0">Customer Information</h5>
+                                <button class="btn btn-sm btn-outline-primary" onclick="toggleCustomerEdit(${c.id})">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                            </div>
+
+                            <!-- Read-only view -->
+                            <div id="custViewMode_${c.id}">
+                                <table class="table table-sm">
+                                    <tr><td><strong>Customer #</strong></td><td><code>${c.customer_number}</code></td></tr>
+                                    <tr><td><strong>Name</strong></td><td>${c.name}</td></tr>
+                                    <tr><td><strong>Email</strong></td><td>${c.email || '—'}</td></tr>
+                                    <tr><td><strong>Status</strong></td><td><span class="status-badge ${c.status === 'active' ? 'status-active' : 'status-expired'}">${c.status}</span></td></tr>
+                                    <tr><td><strong>Created</strong></td><td>${(c.created_at||'').substring(0,10)}</td></tr>
+                                </table>
+                            </div>
+
+                            <!-- Edit form (hidden by default) -->
+                            <div id="custEditMode_${c.id}" style="display:none;">
+                                <div class="mb-2">
+                                    <label class="form-label small mb-1">Name *</label>
+                                    <input type="text" class="form-control form-control-sm" id="editName_${c.id}" value="${c.name.replace(/"/g,'&quot;')}">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small mb-1">Email</label>
+                                    <input type="email" class="form-control form-control-sm" id="editEmail_${c.id}" value="${(c.email||'').replace(/"/g,'&quot;')}">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary" onclick="saveCustomerEdit(${c.id})"><i class="bi bi-check-lg"></i> Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleCustomerEdit(${c.id})">Cancel</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-8">
                             <h5>Licenses</h5>
@@ -1659,6 +1753,45 @@ body {
             }
         }
         
+        function toggleCustomerEdit(customerId) {
+            const view = document.getElementById(`custViewMode_${customerId}`);
+            const edit = document.getElementById(`custEditMode_${customerId}`);
+            if (!view || !edit) return;
+            const editing = edit.style.display !== 'none';
+            view.style.display = editing ? '' : 'none';
+            edit.style.display = editing ? 'none' : '';
+        }
+
+        async function saveCustomerEdit(customerId) {
+            const get = id => (document.getElementById(id) || {}).value || '';
+            const payload = {
+                name:  get(`editName_${customerId}`).trim(),
+                email: get(`editEmail_${customerId}`).trim(),
+            };
+            if (!payload.name) { alert('Name is required'); return; }
+            try {
+                const res = await fetch(`/api/customers/${customerId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    const viewTable = document.querySelector(`#custViewMode_${customerId} table`);
+                    if (viewTable) {
+                        viewTable.rows[1].cells[1].textContent = payload.name;
+                        viewTable.rows[2].cells[1].textContent = payload.email || '—';
+                    }
+                    toggleCustomerEdit(customerId);
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
         function showSendLicenseModal(licenseId, customerEmail) {
             document.getElementById('sendLicenseModal').dataset.licenseId = licenseId;
             document.getElementById('sendLicMessage').value = '';
@@ -2092,22 +2225,47 @@ body {
                 alert('Error: ' + e.message);
             }
         }
-        
-        async function refreshRenewals() {
+
+        async function deleteLicense(licenseId, licenseKey) {
+            if (!confirm(`Permanently delete license ${licenseKey}?\n\nThis action cannot be undone. All associated session data will also be removed.`)) {
+                return;
+            }
             try {
-                const response = await fetch('/api/licenses/renewals');
+                const response = await fetch(`/api/licenses/online/${licenseId}`, {method: 'DELETE'});
+                const result = await response.json();
+                if (result.success) {
+                    alert('License permanently deleted');
+                    refreshCustomers();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function refreshRenewals(page) {
+            if (page !== undefined) renewalsCurrentPage = page;
+            const search = document.getElementById('renewalSearch')?.value ?? '';
+            let url = `/api/licenses/renewals?page=${renewalsCurrentPage}&per_page=${RENEWALS_PER_PAGE}`;
+            if (search) url += '&search=' + encodeURIComponent(search);
+
+            try {
+                const response = await fetch(url);
                 const data = await response.json();
-                
+
                 const tbody = document.getElementById('renewalsBody');
                 tbody.innerHTML = '';
-                
+
                 if (!data.renewals || data.renewals.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No renewals found</td></tr>';
+                    renderPagination('renewalsPaginationList', 'renewalsPaginationInfo',
+                        { page: 1, per_page: RENEWALS_PER_PAGE, total: 0, total_pages: 1 }, refreshRenewals);
                     return;
                 }
-                
+
                 data.renewals.forEach(r => {
-                    const row = `
+                    tbody.innerHTML += `
                         <tr>
                             <td>${r.customer_name}</td>
                             <td><code>${r.customer_number}</code></td>
@@ -2116,55 +2274,57 @@ body {
                             <td>${r.new_expiry}</td>
                             <td>+${r.additional_days}</td>
                             <td>${r.generated_date}</td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
+                        </tr>`;
                 });
+
+                renderPagination('renewalsPaginationList', 'renewalsPaginationInfo', data.pagination, refreshRenewals);
             } catch (e) {
                 console.error('Error loading renewals:', e);
                 document.getElementById('renewalsBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading renewals</td></tr>';
             }
         }
-        
+
         document.getElementById('renewals-tab')?.addEventListener('shown.bs.tab', function() {
+            renewalsCurrentPage = 1;
             refreshRenewals();
         });
-        
-        async function refreshLogs() {
+
+        async function refreshLogs(page) {
+            if (page !== undefined) logsCurrentPage = page;
             const search = document.getElementById('logSearch').value;
             const action = document.getElementById('logActionFilter').value;
             const entity = document.getElementById('logEntityFilter').value;
-            
-            var url = '/api/logs?limit=500';
+
+            let url = `/api/logs?page=${logsCurrentPage}&per_page=${LOGS_PER_PAGE}`;
             if (action !== 'all') url += '&action=' + encodeURIComponent(action);
             if (entity !== 'all') url += '&entity=' + encodeURIComponent(entity);
             if (search) url += '&search=' + encodeURIComponent(search);
-            
+
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                
+
                 const tbody = document.getElementById('logsBody');
                 tbody.innerHTML = '';
-                
+
                 if (!data.logs || data.logs.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No logs found</td></tr>';
+                    renderPagination('logsPaginationList', 'logsPaginationInfo',
+                        { page: 1, per_page: LOGS_PER_PAGE, total: 0, total_pages: 1 }, refreshLogs);
                     return;
                 }
-                
+
                 data.logs.forEach(log => {
                     var actionClass = 'status-active';
                     if (['DELETE', 'CANCEL'].includes(log.action)) actionClass = 'status-expired';
                     else if (['SUSPEND'].includes(log.action)) actionClass = 'status-expiring';
                     else if (['RENEW', 'REACTIVATE', 'EXTEND'].includes(log.action)) actionClass = 'status-perpetual';
                     else if (log.action === 'EMAIL_SENT') actionClass = 'bg-primary text-white';
-                    
+
                     var ts = log.timestamp;
-                    if (ts && ts.includes('T')) {
-                        ts = ts.replace('T', ' ').substring(0, 19);
-                    }
-                    
-                    const row = `
+                    if (ts && ts.includes('T')) ts = ts.replace('T', ' ').substring(0, 19);
+
+                    tbody.innerHTML += `
                         <tr>
                             <td><small>${ts}</small></td>
                             <td><span class="status-badge ${actionClass}">${log.action}</span></td>
@@ -2172,17 +2332,18 @@ body {
                             <td><small>${log.entity_name || '-'}${log.entity_id ? ' <code>#' + log.entity_id + '</code>' : ''}</small></td>
                             <td><small>${log.details}</small></td>
                             <td><small><i class="bi bi-person"></i> ${log.user}</small></td>
-                        </tr>
-                    `;
-                    tbody.innerHTML += row;
+                        </tr>`;
                 });
+
+                renderPagination('logsPaginationList', 'logsPaginationInfo', data.pagination, refreshLogs);
             } catch (e) {
                 console.error('Error loading logs:', e);
                 document.getElementById('logsBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error loading logs</td></tr>';
             }
         }
-        
+
         document.getElementById('logs-tab')?.addEventListener('shown.bs.tab', function() {
+            logsCurrentPage = 1;
             refreshLogs();
         });
     </script>
