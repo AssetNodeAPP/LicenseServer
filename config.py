@@ -50,7 +50,7 @@ class EncryptedLicenseStore:
     
     @classmethod
     def save_license(cls, encrypted_license: str, session_key: str, customer_number: str, 
-                     server_url: str, mac_address: str, expiry_date: str, license_key: str = None):
+                     server_url: str, mac_address: str, expiry_date: str, license_key: str = None, ip_address: str = None):
         """
         Save license data encrypted in config.py
         
@@ -62,6 +62,7 @@ class EncryptedLicenseStore:
             mac_address: MAC address of this machine
             expiry_date: License expiry date
             license_key: Original license key (XXXX-XXXX-XXXX-XXXX-XXXX) for auto re-auth
+            ip_address: IP address of this machine
         """
         license_data = {
             'encrypted_license': encrypted_license,
@@ -69,6 +70,7 @@ class EncryptedLicenseStore:
             'customer_number': customer_number,
             'server_url': server_url,
             'mac_address': mac_address,
+            'ip_address': ip_address,
             'expiry_date': expiry_date,
             'license_key': license_key or ''
         }

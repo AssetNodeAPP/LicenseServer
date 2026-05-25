@@ -238,6 +238,7 @@ def init_database():
             expiry_date TEXT NOT NULL,
             status TEXT DEFAULT 'active',
             mac_address TEXT,
+            ip_address TEXT,
             auto_renew BOOLEAN DEFAULT 0,
             stripe_subscription_id TEXT,
             stripe_price_id TEXT,
@@ -255,6 +256,7 @@ def init_database():
             customer_id INTEGER NOT NULL,
             session_key_encrypted TEXT NOT NULL,
             mac_address TEXT,
+            ip_address TEXT,
             last_check_in TEXT,
             created_at TEXT NOT NULL,
             expires_at TEXT NOT NULL,
@@ -331,6 +333,13 @@ def init_database():
         cursor.execute("ALTER TABLE customer_licenses ADD COLUMN renewal_interval TEXT DEFAULT 'yearly'")
     if 'nickname' not in columns:
         cursor.execute("ALTER TABLE customer_licenses ADD COLUMN nickname TEXT")
+    if 'ip_address' not in columns:
+        cursor.execute("ALTER TABLE customer_licenses ADD COLUMN ip_address TEXT")
+
+    cursor.execute("PRAGMA table_info(license_sessions)")
+    ls_columns = [column[1] for column in cursor.fetchall()]
+    if 'ip_address' not in ls_columns:
+        cursor.execute("ALTER TABLE license_sessions ADD COLUMN ip_address TEXT")
 
     conn.commit()
     conn.close()
@@ -1742,7 +1751,7 @@ def send_online_license_email():
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT cl.id, cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.auto_renew,
+        SELECT cl.id, cl.license_key, cl.expiry_date, cl.status, cl.mac_address, cl.ip_address, cl.auto_renew,
                cl.renewal_interval, cl.stripe_subscription_id,
                c.name, c.email, c.customer_number
         FROM customer_licenses cl
@@ -1756,7 +1765,7 @@ def send_online_license_email():
     if not lic:
         return jsonify({'success': False, 'error': 'License not found'})
     
-    lic_id, license_key, expiry_date, status, mac_address, auto_renew, renewal_interval, stripe_sub, cust_name, cust_email, cust_number = lic
+    lic_id, license_key, expiry_date, status, mac_address, ip_address, auto_renew, renewal_interval, stripe_sub, cust_name, cust_email, cust_number = lic
     
     if override_email:
         recipient_email = override_email
@@ -1894,6 +1903,9 @@ def activate_license():
         data = request.get_json()
         encrypted_data = data.get('encrypted_data')
         mac_address = data.get('mac_address', '').strip()
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ',' in ip_address:
+            ip_address = ip_address.split(',')[0].strip()
         
         if not encrypted_data:
             return jsonify({'success': False, 'error': 'Missing encrypted data'})
@@ -2007,9 +2019,9 @@ def activate_license():
         
         # Create new session with customer_license_id
         cursor.execute('''
-            INSERT INTO license_sessions (customer_id, customer_license_id, session_key_encrypted, mac_address, last_check_in, created_at, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (customer_id, lic_id, session_key_b64, mac_address, now, now, expires_at))
+            INSERT INTO license_sessions (customer_id, customer_license_id, session_key_encrypted, mac_address, ip_address, last_check_in, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (customer_id, lic_id, session_key_b64, mac_address, ip_address, now, now, expires_at))
         
         # Permanently bind the MAC to the license after first activation
         cursor.execute('UPDATE customer_licenses SET mac_address = ?, status = \'active\', updated_at = ? WHERE id = ?', (mac_address, now, lic_id))
@@ -2019,7 +2031,7 @@ def activate_license():
                 username = 'system'
             except:
                 username = 'system'
-            log_action('ACTIVATE', 'license', lic_id, company_name, f'License activated on MAC: {mac_address}', username)
+            log_action('ACTIVATE', 'license', lic_id, company_name, f'License activated on MAC: {mac_address}, IP: {ip_address}', username)
         
         conn.commit()
         conn.close()
@@ -2045,6 +2057,10 @@ def check_license():
     Server responds: {status: str, days_remaining: int, encrypted_message: str}
     """
     try:
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ',' in ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+
         data = request.get_json()
         encrypted_data = data.get('encrypted_data')
         
@@ -2061,7 +2077,7 @@ def check_license():
             SELECT ls.id, ls.customer_id, ls.session_key_encrypted, ls.expires_at, 
                    c.customer_number, c.status as customer_status,
                    cl.expiry_date, cl.status as license_status,
-                   ls.mac_address
+                   ls.mac_address, ls.ip_address
             FROM license_sessions ls
             JOIN customers c ON ls.customer_id = c.id
             JOIN customer_licenses cl ON cl.customer_id = c.id
@@ -2076,7 +2092,7 @@ def check_license():
         matched_session = None
         
         for session in sessions:
-            session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status, session_mac = session
+            session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status, session_mac, session_ip = session
             try:
                 session_key = base64.b64decode(session_key_enc)
                 payload = json.loads(decrypt_with_aes(encrypted_data, session_key))
@@ -2092,10 +2108,11 @@ def check_license():
         if not decrypted_payload or not matched_session:
             return jsonify({'success': False, 'error': 'Invalid session or expired'})
         
-        session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status, session_mac = matched_session
+        session_id, customer_id, session_key_enc, expires_at, cust_num, cust_status, exp_date, lic_status, session_mac, session_ip = matched_session
         
         # MAC re-verification: ensure client is still on the same machine that activated
         client_mac = decrypted_payload.get('mac_address', data.get('mac_address', '')).upper()
+        client_ip = decrypted_payload.get('ip_address', '')
         if client_mac and session_mac and session_mac.upper() != client_mac:
             return jsonify({
                 'status': 'rejected',
@@ -2131,7 +2148,8 @@ def check_license():
         
         # Update last check-in and extend session expiry
         new_expires_at = (datetime.now() + timedelta(days=365)).isoformat()
-        cursor.execute('UPDATE license_sessions SET last_check_in = ?, expires_at = ? WHERE id = ?', (datetime.now().isoformat(), new_expires_at, session_id))
+        stored_ip = client_ip or ip_address
+        cursor.execute('UPDATE license_sessions SET last_check_in = ?, expires_at = ?, ip_address = ? WHERE id = ?', (datetime.now().isoformat(), new_expires_at, stored_ip, session_id))
         conn.commit()
         conn.close()
         
@@ -2180,20 +2198,21 @@ def get_customers():
         
         # Get licenses for this customer
         cursor.execute('''
-            SELECT id, license_key, expiry_date, status, mac_address, created_at, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, nickname
+            SELECT id, license_key, expiry_date, status, mac_address, ip_address, created_at, auto_renew, stripe_subscription_id, stripe_price_id, renewal_interval, nickname
             FROM customer_licenses WHERE customer_id = ?
         ''', (cust_id,))
         licenses = cursor.fetchall()
         
         license_list = []
         for lic in licenses:
-            lic_id, key, exp, lic_status, mac, created_at, auto_renew, stripe_sub, stripe_price, renewal_interval, nickname = lic
+            lic_id, key, exp, lic_status, mac, ip, created_at, auto_renew, stripe_sub, stripe_price, renewal_interval, nickname = lic
             license_list.append({
                 'id': lic_id,
                 'license_key_masked': key[:8] + '****' + key[-4:] if len(key) > 12 else '****',
                 'expiry_date': exp,
                 'status': lic_status,
                 'mac_address': mac,
+                'ip_address': ip,
                 'created_at': created_at,
                 'auto_renew': bool(auto_renew),
                 'stripe_subscription_id': stripe_sub,
@@ -2296,20 +2315,21 @@ def get_customer(customer_id):
     cust_id, cust_num, name, email, status, stripe_sub, created, updated = c
     
     cursor.execute('''
-        SELECT id, license_key, encrypted_data, expiry_date, status, mac_address, created_at, updated_at, auto_renew, stripe_subscription_id, renewal_interval, nickname
+        SELECT id, license_key, encrypted_data, expiry_date, status, mac_address, ip_address, created_at, updated_at, auto_renew, stripe_subscription_id, renewal_interval, nickname
         FROM customer_licenses WHERE customer_id = ?
     ''', (cust_id,))
     licenses = cursor.fetchall()
     
     license_list = []
     for lic in licenses:
-        lic_id, key, enc_data, exp, lic_status, mac, created_at, updated_at, auto_renew, stripe_sub, renewal_interval, nickname = lic
+        lic_id, key, enc_data, exp, lic_status, mac, ip, created_at, updated_at, auto_renew, stripe_sub, renewal_interval, nickname = lic
         license_list.append({
             'id': lic_id,
             'license_key': key,
             'expiry_date': exp,
             'status': lic_status,
             'mac_address': mac,
+            'ip_address': ip,
             'created_at': created_at,
             'updated_at': updated_at,
             'auto_renew': bool(auto_renew),
@@ -2526,6 +2546,9 @@ def generate_online_license():
     
     customer_id = data.get('customer_id')
     mac_address = data.get('mac_address', '').strip()
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ',' in ip_address:
+        ip_address = ip_address.split(',')[0].strip()
     expiry_days = int(data.get('expiry_days', 365))
     bind_to_mac = data.get('bind_to_mac', True)
     auto_renew = data.get('auto_renew', False)
@@ -2562,9 +2585,9 @@ def generate_online_license():
     encrypted_data = base64.b64encode(json.dumps(license_data).encode()).decode()
     
     cursor.execute('''
-        INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, mac_address, auto_renew, stripe_price_id, renewal_interval, nickname, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'ready', ?, ?, ?, ?, ?, ?, ?)
-    ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, 1 if auto_renew else 0, stripe_price_id, renewal_interval, nickname if nickname else None, now, now))
+        INSERT INTO customer_licenses (customer_id, license_key, encrypted_data, expiry_date, status, mac_address, ip_address, auto_renew, stripe_price_id, renewal_interval, nickname, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'ready', ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (customer_id, license_key, encrypted_data, expiry_date, mac_address if bind_to_mac else None, ip_address, 1 if auto_renew else 0, stripe_price_id, renewal_interval, nickname if nickname else None, now, now))
     
     license_id = cursor.lastrowid
     
