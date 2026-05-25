@@ -390,6 +390,11 @@ def current_user():
     }
 
 
+@app.context_processor
+def inject_current_user():
+    return {"current_user": current_user()}
+
+
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):

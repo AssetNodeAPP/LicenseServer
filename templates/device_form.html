@@ -1,12 +1,19 @@
+{% extends "base.html" %}
 
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <title>{{ 'Edit Device' if mode=='edit' else 'Add Device' }}</title>
-  <style>
+{% block title %}{{ 'Edit Device' if mode=='edit' else 'Add Device' }}{% endblock %}
+
+{% block styles %}
+<style>
+body { background:#f8f9fa; padding:20px; }
+    .container { max-width: 720px; }
+    .employee-lookup {position:relative;}
+    .employee-results {position:absolute; z-index:1000; background:white; border:1px solid #ccc; border-radius:4px; max-height:200px; overflow-y:auto; width:100%; display:none; box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+    .employee-result-item {padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;}
+    .employee-result-item:hover {background-color:#f0f0f0;}
+    .employee-result-item:last-child {border-bottom:none;}
+    .employee-match {color:#666; font-size:0.85em;}
+  
+
     body { background:#f8f9fa; padding:20px; }
     .container { max-width: 720px; }
     .employee-lookup {position:relative;}
@@ -15,93 +22,11 @@
     .employee-result-item:hover {background-color:#f0f0f0;}
     .employee-result-item:last-child {border-bottom:none;}
     .employee-match {color:#666; font-size:0.85em;}
-  </style>
-</head>
-<body class="bg-light">
-  <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3">
-      <div class="container-fluid px-3 px-lg-4">
-        <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
-          <i class="bi bi-house"></i> AssetNode
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav" aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="topNav">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('home') }}">
-                <i class="bi bi-house"></i> Home
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link active" href="{{ url_for('list_devices') }}">
-                <i class="bi bi-laptop"></i> Devices
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" aria-current="page" href="/printers">
-                <i class="bi bi-printer"></i> Printers
-              </a>
-            </li>
-            {% if user and user.role != 'viewer' %}
-            <li class="nav-item">
-              <a class="nav-link" href="/tasks">
-                <i class="bi bi-list-check"></i> Tasks
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('employees_list') }}">
-                <i class="bi bi-people"></i> Employees
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('items_list') }}">
-                <i class="bi bi-box-seam"></i> Inventory
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('printer_supplies') }}">
-                <i class="bi bi-droplet"></i> Levels
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('scanner_page') }}">
-                <i class="bi bi-upc-scan"></i> Scanner
-              </a>
-            </li>
-            {% endif %}
-          </ul>
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            {% if is_admin %}
-              <a class="btn btn-success btn-sm text-nowrap" href="{{ url_for('admin_printer_new') }}" title="Add a new printer">
-                <i class="bi bi-plus-lg"></i> Add Printer
-              </a>
-            {% endif %}
-            <a class="btn btn-info btn-sm text-nowrap" href="{{ url_for('report_devices') }}" title="Create report of devices">
-              <i class="bi bi-file-earmark-text"></i> Create Report
-            </a>
-            {% if user and user.role == 'admin' %}
-              <a class="btn btn-outline-primary btn-sm" href="{{ url_for('admin_users') }}" title="Manage accounts">
-                <i class="bi bi-shield-lock"></i> Accounts
-              </a>
-              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('settings') }}" title="Settings">
-                <i class="bi bi-gear"></i>
-              </a>
-            {% endif %}
-            {% if logo %}
-              <img src="{{ logo }}" alt="Logo" style="max-height:36px; object-fit:contain; margin:0 8px;">
-            {% endif %}
-            {% if user %}
-              <span class="me-2 small text-white d-none d-lg-inline">{{ user.username }} ({{ user.role }})</span>
-              <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('logout') }}">
-                <i class="bi bi-box-arrow-right"></i> Logout
-              </a>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-    </nav>
-  <div class="container">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
     <div class="card shadow-sm mb-3">
       <div class="card-body">
         <h4 class="card-title mb-3">{{ 'Edit Device' if mode=='edit' else 'Add Device' }}</h4>
@@ -442,8 +367,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <!-- Bootstrap JS for dropdown functionality -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% endif %}
   </div>
   <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -482,10 +409,4 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-
-{# Floating AI chat bubble (auto-injected) #}
-{% if chat_widget_show and chat_widget_enabled %}
-  {% include '_chat_widget.html' %}
-{% endif %}
-</body>
-</html>
+{% endblock %}

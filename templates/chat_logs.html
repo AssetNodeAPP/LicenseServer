@@ -1,38 +1,8 @@
-{# ---- Reusable URL builder & sort header macros ---- #}
-{%- macro qs(overrides) -%}
-{%- set base = {
-  'user': user_filter, 'date': date_filter, 'q': search,
-  'date_from': date_from, 'date_to': date_to,
-  'sort': sort, 'order': order, 'per_page': per_page, 'page': page,
-  'deep': '1' if deep_search else ''
-} -%}
-{%- set merged = base.copy() -%}
-{%- if overrides -%}{%- set _ = merged.update(overrides) -%}{%- endif -%}
-{{ url_for('chat_logs') }}?
-{%- for k, v in merged.items() if v not in (None, '', 0) or k == 'page' -%}
-{%- if not loop.first %}&{% endif -%}
-{{ k }}={{ v|urlencode }}
-{%- endfor -%}
-{%- endmacro -%}
+{% extends "base.html" %}
 
-{%- macro sort_header(field, label) -%}
-{%- set new_order = 'asc' if (sort == field and order == 'desc') else ('desc' if sort == field else 'asc') -%}
-<a href="{{ qs({'sort': field, 'order': new_order, 'page': 1}) }}" class="text-decoration-none">
-  {{ label }}
-  {%- if sort == field %}
-    <i class="bi bi-arrow-{{ 'down' if order == 'desc' else 'up' }} small"></i>
-  {%- endif %}
-</a>
-{%- endmacro -%}
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-<title>Chat Logs - Device Inventory</title>
+{% block title %}Chat Logs - Device Inventory{% endblock %}
+
+{% block styles %}
 <style>
 body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -231,9 +201,209 @@ body {
   font-size:.9rem;
 }
 .bulk-bar.show { display:flex; }
+
+
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.logs-container { max-width: 1400px; margin: 0 auto; }
+
+.page-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 24px 30px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+}
+.page-header h1 {
+  font-size: 2rem; font-weight: 700; margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.btn-back {
+  background: white; border: 2px solid #e2e8f0; border-radius: 12px;
+  padding: 8px 18px; color: #2d3748; text-decoration: none; font-weight: 600;
+  transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-back:hover {
+  background: #667eea; color: white; border-color: #667eea;
+  transform: translateY(-1px); box-shadow: 0 4px 10px rgba(102,126,234,.3);
+}
+
+.stats-row {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.stat-card {
+  background: rgba(255,255,255,0.95); border-radius: 14px; padding: 14px 18px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12); display: flex; align-items: center; gap: 12px;
+}
+.stat-card .icon {
+  width: 42px; height: 42px; border-radius: 10px;
+  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  color: white; display:flex; align-items:center; justify-content:center; font-size: 1.2rem;
+}
+.stat-card .label { color:#64748b; font-size:.78rem; text-transform: uppercase; letter-spacing:.05em; }
+.stat-card .value { font-size: 1.3rem; font-weight: 700; color:#1e293b; }
+
+.main-card {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.toolbar {
+  padding: 16px 20px; border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.breadcrumb-nav {
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  font-size:.95rem; color:#475569;
+}
+.breadcrumb-nav a {
+  color:#667eea; text-decoration:none; font-weight:600;
+  padding: 4px 10px; border-radius: 8px; transition: all .2s;
+}
+.breadcrumb-nav a:hover { background:#eef2ff; }
+.breadcrumb-nav .sep { color:#94a3b8; }
+.breadcrumb-nav .current { color:#1e293b; font-weight:700; padding: 4px 10px; }
+
+.explorer-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 500px;
+}
+@media (max-width: 900px) {
+  .explorer-grid { grid-template-columns: 1fr; }
+}
+
+.sidebar {
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 14px 8px;
+  max-height: 70vh; overflow-y: auto;
+}
+.sidebar h6 {
+  color:#64748b; text-transform:uppercase; letter-spacing:.05em;
+  font-size:.72rem; padding: 0 10px 6px; margin: 0; font-weight: 700;
+}
+.user-item, .all-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  text-decoration: none; color:#1e293b; font-size:.92rem;
+  transition: background .15s;
+}
+.user-item:hover, .all-item:hover { background: #eef2ff; color: #1e293b; }
+.user-item.active, .all-item.active {
+  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  color:white;
+}
+.user-item.active .small, .all-item.active .small { color: rgba(255,255,255,.85) !important; }
+.user-item .icon, .all-item .icon { font-size: 1.1rem; flex-shrink: 0; }
+.user-item .meta { margin-left: auto; font-size:.72rem; color:#64748b; }
+.user-item.active .meta { color: rgba(255,255,255,.85); }
+.user-item .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px; }
+
+.content-pane { padding: 16px 20px; }
+
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr 160px 160px auto auto;
+  gap: 10px; align-items: end;
+}
+@media (max-width: 1100px) { .search-row { grid-template-columns: 1fr 1fr; } }
+.search-row label { font-size:.78rem; color:#475569; font-weight:600; margin-bottom:2px; }
+.form-control, .form-select { border-radius: 10px; border:1px solid #e2e8f0; }
+.form-control:focus, .form-select:focus {
+  border-color:#667eea; box-shadow: 0 0 0 .2rem rgba(102,126,234,.18);
+}
+
+.file-table { width:100%; border-collapse: separate; border-spacing: 0; margin-top: 14px; }
+.file-table th {
+  background: #f8fafc; color:#475569; font-weight:600; font-size:.78rem;
+  text-transform: uppercase; letter-spacing:.05em; padding: 10px 12px;
+  border-bottom: 2px solid #e2e8f0; text-align: left;
+}
+.file-table th a { color:#475569; text-decoration:none; }
+.file-table th a:hover { color:#667eea; }
+.file-table td {
+  padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size:.9rem;
+  vertical-align: middle;
+}
+.file-table tr:hover td { background:#f8fafc; }
+
+.file-name {
+  display:inline-flex; align-items:center; gap:8px; color:#1e293b; text-decoration:none;
+  font-weight: 500;
+}
+.file-name:hover { color:#667eea; }
+.file-name .icon { color:#667eea; font-size:1.1rem; }
+.user-pill, .date-pill {
+  display:inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size:.78rem; font-weight: 600;
+}
+.user-pill { background:#eef2ff; color:#4338ca; }
+.date-pill { background:#f0fdf4; color:#166534; }
+.size-cell { color:#64748b; font-variant-numeric: tabular-nums; font-size:.85rem; }
+.token-pill {
+  display:inline-flex; align-items:center; gap:5px;
+  background:#fef3c7; color:#92400e; font-weight:600;
+  padding: 2px 9px; border-radius: 999px; font-size:.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.token-pill i { font-size:.85rem; }
+.actions-cell { white-space: nowrap; text-align: right; }
+.actions-cell .btn { padding: 3px 8px; font-size:.8rem; }
+
+.empty-state {
+  text-align: center; padding: 60px 20px; color:#64748b;
+}
+.empty-state i { font-size: 3rem; color:#cbd5e1; }
+
+.pagination .page-link {
+  border-radius: 8px !important; margin: 0 2px; border: 1px solid #e2e8f0;
+  color:#475569;
+}
+.pagination .page-item.active .page-link {
+  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  border-color: transparent; color: white;
+}
+.pagination .page-link:hover { background:#eef2ff; color:#4338ca; }
+
+/* Viewer modal */
+.transcript-pre {
+  background: #0f172a; color:#e2e8f0; border-radius: 10px;
+  padding: 16px; font-family: 'Cascadia Code','Fira Code',Consolas,monospace;
+  font-size:.85rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;
+  max-height: 65vh; overflow-y: auto;
+}
+.transcript-pre mark { background:#facc15; color:#0f172a; padding:1px 3px; border-radius:3px; }
+.modal-content { border: none; border-radius: 16px; }
+.modal-header {
+  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  color: white; border-radius: 16px 16px 0 0;
+}
+.modal-header .btn-close { filter: invert(1); }
+
+.bulk-bar {
+  background: linear-gradient(90deg,#fef3c7,#fde68a);
+  border-radius: 10px; padding: 8px 14px;
+  display:none; align-items: center; gap: 10px; margin-bottom: 10px;
+  font-size:.9rem;
+}
+.bulk-bar.show { display:flex; }
 </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
 <div class="logs-container">
 
   <div class="page-header">
@@ -487,27 +657,7 @@ body {
         </div>
 
         {% if pages > 1 %}
-          <nav class="mt-3 d-flex justify-content-center">
-            <ul class="pagination pagination-sm">
-              <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-                <a class="page-link" href="{{ qs({'page': 1}) }}">First</a>
-              </li>
-              <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-                <a class="page-link" href="{{ qs({'page': page-1}) }}">Prev</a>
-              </li>
-              {% for p in page_nums %}
-                <li class="page-item {% if p == page %}active{% endif %}">
-                  <a class="page-link" href="{{ qs({'page': p}) }}">{{ p }}</a>
-                </li>
-              {% endfor %}
-              <li class="page-item {% if page >= pages %}disabled{% endif %}">
-                <a class="page-link" href="{{ qs({'page': page+1}) }}">Next</a>
-              </li>
-              <li class="page-item {% if page >= pages %}disabled{% endif %}">
-                <a class="page-link" href="{{ qs({'page': pages}) }}">Last</a>
-              </li>
-            </ul>
-          </nav>
+          
         {% endif %}
         {% endif %}
       </div>
@@ -627,5 +777,4 @@ document.addEventListener('click', function(e) {
 {% if chat_widget_show and chat_widget_enabled %}
   {% include '_chat_widget.html' %}
 {% endif %}
-</body>
-</html>
+{% endblock %}

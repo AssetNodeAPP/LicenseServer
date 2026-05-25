@@ -1,18 +1,24 @@
+{% extends "base.html" %}
 
-    <!doctype html>
-    <html><head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <title>System Logs</title>
-    <style>
+{% block title %}System Logs{% endblock %}
+
+{% block styles %}
+<style>
+body { background:#f8f9fa; padding:20px; }
+      .container { max-width: 1200px; }
+      .badge-device { background-color: #0d6efd; }
+      .badge-printer { background-color: #6610f2; }
+    
+
       body { background:#f8f9fa; padding:20px; }
       .container { max-width: 1200px; }
       .badge-device { background-color: #0d6efd; }
       .badge-printer { background-color: #6610f2; }
-    </style>
-    </head>
-    <body>
-      <div class="container">
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3>System Logs</h3>
           <div class="d-flex gap-2">
@@ -136,27 +142,7 @@
               {% if pages > 1 %}
               <div class="d-flex justify-content-between align-items-center mt-3">
                 <div class="text-muted small">Page {{ page }} of {{ pages }}</div>
-                <nav>
-                  <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-                      <a class="page-link" href="?page=1&per_page={{ per_page }}&action={{ action_filter }}&person={{ person_filter }}&device={{ device_filter }}&date_from={{ date_from }}&date_to={{ date_to }}">First</a>
-                    </li>
-                    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-                      <a class="page-link" href="?page={{ page - 1 }}&per_page={{ per_page }}&action={{ action_filter }}&person={{ person_filter }}&device={{ device_filter }}&date_from={{ date_from }}&date_to={{ date_to }}">Prev</a>
-                    </li>
-                    {% for p in page_numbers %}
-                      <li class="page-item {% if p == page %}active{% endif %}">
-                        <a class="page-link" href="?page={{ p }}&per_page={{ per_page }}&action={{ action_filter }}&person={{ person_filter }}&device={{ device_filter }}&date_from={{ date_from }}&date_to={{ date_to }}">{{ p }}</a>
-                      </li>
-                    {% endfor %}
-                    <li class="page-item {% if page >= pages %}disabled{% endif %}">
-                      <a class="page-link" href="?page={{ page + 1 }}&per_page={{ per_page }}&action={{ action_filter }}&person={{ person_filter }}&device={{ device_filter }}&date_from={{ date_from }}&date_to={{ date_to }}">Next</a>
-                    </li>
-                    <li class="page-item {% if page >= pages %}disabled{% endif %}">
-                      <a class="page-link" href="?page={{ pages }}&per_page={{ per_page }}&action={{ action_filter }}&person={{ person_filter }}&device={{ device_filter }}&date_from={{ date_from }}&date_to={{ date_to }}">Last</a>
-                    </li>
-                  </ul>
-                </nav>
+                
               </div>
               {% endif %}
             {% endif %}
@@ -176,6 +162,4 @@
     {% if chat_widget_show and chat_widget_enabled %}
       {% include '_chat_widget.html' %}
     {% endif %}
-    </body>
-    </html>
-    
+{% endblock %}

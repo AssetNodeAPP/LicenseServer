@@ -1,12 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ article.title }} - Knowledge Base</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
-    <style>
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - Knowledge Base{% endblock %}
+
+{% block styles %}
+<style>
+body { background: #f8f9fa; }
+        .navbar { background: white !important; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 25px; padding: 15px 20px; }
+        .article-container { background: white; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 30px; margin-bottom: 20px; }
+        .category-badge { background: #e3f2fd; color: #1565c0; padding: 6px 15px; border-radius: 20px; font-size: 0.9em; }
+        .tag-badge { background: #f3e5f5; color: #7b1fa2; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; margin-right: 5px; }
+        .access-badge { padding: 4px 12px; border-radius: 15px; font-size: 0.85em; font-weight: 500; }
+        .access-badge-all { background: #e8f5e9; color: #2e7d32; }
+        .access-badge-users { background: #e3f2fd; color: #1565c0; }
+        .access-badge-admin { background: #fce4ec; color: #c62828; }
+        .section-box { background: #f8f9fa; border-left: 4px solid #0d6efd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .solution-box { background: #f0f8f0; border-left: 4px solid #198754; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .rating-btn { min-width: 120px; }
+        .related-card { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 10px; border: 1px solid #e9ecef; }
+        .image-gallery { display: flex; flex-wrap: wrap; gap: 15px; margin: 20px 0; }
+        .image-item { position: relative; width: 200px; }
+        .image-item img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .image-item a { display: block; }
+        /* ===== Rich text / Quill content styles ===== */
+        .kb-content { line-height: 1.7; font-size: 1rem; word-wrap: break-word; }
+        .kb-content h1 { font-size: 1.75em; margin: 1em 0 0.5em; font-weight: 700; }
+        .kb-content h2 { font-size: 1.5em; margin: 1em 0 0.5em; font-weight: 600; }
+        .kb-content h3 { font-size: 1.25em; margin: 0.8em 0 0.4em; font-weight: 600; }
+        .kb-content h4 { font-size: 1.1em; margin: 0.8em 0 0.4em; font-weight: 600; }
+        .kb-content p { margin-bottom: 0.75em; }
+        .kb-content strong, .kb-content b { font-weight: 700; }
+        .kb-content em, .kb-content i { font-style: italic; }
+        .kb-content u { text-decoration: underline; }
+        .kb-content s { text-decoration: line-through; }
+        .kb-content a { color: #0d6efd; text-decoration: underline; }
+        .kb-content a:hover { color: #0a58ca; }
+        /* Lists */
+        .kb-content ul, .kb-content ol { margin-bottom: 0.75em; padding-left: 2em; }
+        .kb-content li { margin-bottom: 0.25em; }
+        .kb-content li.ql-indent-1 { padding-left: 2em; }
+        .kb-content li.ql-indent-2 { padding-left: 4em; }
+        .kb-content li.ql-indent-3 { padding-left: 6em; }
+        .kb-content li.ql-indent-4 { padding-left: 8em; }
+        /* Blockquote */
+        .kb-content blockquote {
+            border-left: 4px solid #a0aec0; margin: 1em 0; padding: 0.75em 1.25em;
+            color: #4a5568; background: #f7fafc; border-radius: 4px; font-style: italic;
+        }
+        /* Inline code */
+        .kb-content code {
+            background: #e9ecef; padding: 2px 6px; border-radius: 4px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.875em; color: #d63384;
+        }
+        /* Code blocks — Quill v2 uses div.ql-code-block-container > div.ql-code-block */
+        .kb-content .ql-code-block-container {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 8px;
+            padding: 16px 20px; margin: 1em 0; overflow-x: auto;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.875em; line-height: 1.6;
+        }
+        .kb-content .ql-code-block {
+            font-family: inherit; white-space: pre;
+        }
+        /* Fallback for Quill v1 <pre> code blocks */
+        .kb-content pre, .kb-content pre.ql-syntax {
+            background: #1e1e2e; color: #cdd6f4; padding: 16px 20px; border-radius: 8px;
+            overflow-x: auto; margin: 1em 0; font-size: 0.875em; line-height: 1.5;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+        .kb-content pre code, .kb-content pre.ql-syntax code {
+            background: none; padding: 0; color: inherit; font-size: inherit;
+        }
+        /* Text alignment (Quill classes) */
+        .kb-content .ql-align-center { text-align: center; }
+        .kb-content .ql-align-right { text-align: right; }
+        .kb-content .ql-align-justify { text-align: justify; }
+        /* Indentation (Quill classes) */
+        .kb-content .ql-indent-1 { padding-left: 3em; }
+        .kb-content .ql-indent-2 { padding-left: 6em; }
+        .kb-content .ql-indent-3 { padding-left: 9em; }
+        .kb-content .ql-indent-4 { padding-left: 12em; }
+        /* Comment editor */
+        .comment-editor-wrapper .ql-editor { min-height: 80px; font-size: 0.95rem; }
+        .comment-editor-wrapper .ql-toolbar { border-radius: 8px 8px 0 0; background: #f1f3f5; }
+        .comment-editor-wrapper .ql-container { border-radius: 0 0 8px 8px; }
+        /* Comment content (rich text) */
+        .comment-content { line-height: 1.6; }
+        .comment-content p { margin-bottom: 0.4em; }
+        .comment-content p:last-child { margin-bottom: 0; }
+        .comment-content .ql-code-block-container { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 10px 14px; margin: 0.5em 0; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.85em; overflow-x: auto; }
+        .comment-content .ql-code-block { white-space: pre; font-family: inherit; }
+        .comment-content pre { background: #1e1e2e; color: #cdd6f4; padding: 10px 14px; border-radius: 6px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.85em; overflow-x: auto; margin: 0.5em 0; }
+        .comment-content code { background: #e9ecef; padding: 1px 5px; border-radius: 3px; font-size: 0.875em; color: #d63384; }
+        .comment-content pre code { background: none; padding: 0; color: inherit; }
+        .comment-content blockquote { border-left: 3px solid #ccc; padding: 0.3em 0.8em; margin: 0.5em 0; color: #555; }
+        .comment-content ul, .comment-content ol { padding-left: 1.5em; margin: 0.4em 0; }
+        .comment-content a { color: #0d6efd; }
+        /* Related articles compact */
+        .related-tag { display: inline-block; margin: 4px; }
+        .related-tag a { background: #f0f4f8; border: 1px solid #d2dae2; border-radius: 20px; padding: 5px 14px; font-size: 0.85em; color: #2d3748; text-decoration: none; display: inline-block; transition: all 0.2s; }
+        .related-tag a:hover { background: #0d6efd; color: white; border-color: #0d6efd; }
+    
+
         body { background: #f8f9fa; }
         .navbar { background: white !important; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 25px; padding: 15px 20px; }
         .article-container { background: white; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 30px; margin-bottom: 20px; }
@@ -103,21 +198,12 @@
         .related-tag { display: inline-block; margin: 4px; }
         .related-tag a { background: #f0f4f8; border: 1px solid #d2dae2; border-radius: 20px; padding: 5px 14px; font-size: 0.85em; color: #2d3748; text-decoration: none; display: inline-block; transition: all 0.2s; }
         .related-tag a:hover { background: #0d6efd; color: white; border-color: #0d6efd; }
-    </style>
-</head>
-<body>
-    <div class="container mt-4">
-        <nav class="navbar navbar-expand-lg">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="{{ url_for('home') }}">
-                    <img src="{{ logo }}" alt="Logo" style="height: 40px;"> Knowledge Base
-                </a>
-                <div class="d-flex gap-2">
-                    <a href="{{ url_for('kb_list') }}" class="btn btn-outline-secondary btn-sm">Back to List</a>
-                    <a href="{{ url_for('home') }}" class="btn btn-outline-primary btn-sm">Home</a>
-                </div>
-            </div>
-        </nav>
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+        
 
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -353,10 +439,4 @@
             : '<i class="bi bi-eye me-1"></i> Show Comments';
     }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-{# Floating AI chat bubble (auto-injected) #}
-{% if chat_widget_show and chat_widget_enabled %}
-  {% include '_chat_widget.html' %}
-{% endif %}
-</body>
-</html>
+{% endblock %}

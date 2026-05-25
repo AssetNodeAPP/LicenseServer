@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>{{ article.title }} - Knowledge Base - Employee Portal</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - Knowledge Base - Employee Portal{% endblock %}
+
+{% block styles %}
 <style>
 body {
   background: #f8f9fa;
@@ -241,39 +237,245 @@ body {
   .image-item { width: 150px; }
   .image-item img { height: 100px; }
 }
+
+
+body {
+  background: #f8f9fa;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.navbar {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  padding: 15px 20px;
+  border-radius: 0 0 15px 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: white !important;
+}
+
+.nav-link {
+  color: rgba(255,255,255,0.9) !important;
+  font-weight: 500;
+  padding: 8px 16px !important;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+  background: rgba(255,255,255,0.2);
+  color: white !important;
+}
+
+.article-container {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 30px;
+  margin-bottom: 20px;
+}
+
+.category-badge {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 6px 15px;
+  border-radius: 20px;
+  font-size: 0.9em;
+}
+
+.tag-badge {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  margin-right: 5px;
+}
+
+.section-box {
+  background: #f8f9fa;
+  border-left: 4px solid #11998e;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.solution-box {
+  background: #f0f8f0;
+  border-left: 4px solid #38ef7d;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.rating-btn {
+  min-width: 120px;
+}
+
+.related-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.related-card:hover {
+  border-color: #11998e;
+}
+
+.image-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.image-item {
+  position: relative;
+  width: 200px;
+}
+
+.image-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.image-item a { display: block; }
+
+.comment-box {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0f806d 0%, #2fd66d 100%);
+  box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
+}
+
+.btn-outline-primary {
+  border: 2px solid #11998e;
+  color: #11998e;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-outline-primary:hover {
+  background: #11998e;
+  color: white;
+}
+
+.alert {
+  border-radius: 12px;
+  border: none;
+}
+
+/* ===== Rich text / Quill content styles ===== */
+.kb-content { line-height: 1.7; font-size: 1rem; word-wrap: break-word; }
+.kb-content h1 { font-size: 1.75em; margin: 1em 0 0.5em; font-weight: 700; }
+.kb-content h2 { font-size: 1.5em; margin: 1em 0 0.5em; font-weight: 600; }
+.kb-content h3 { font-size: 1.25em; margin: 0.8em 0 0.4em; font-weight: 600; }
+.kb-content h4 { font-size: 1.1em; margin: 0.8em 0 0.4em; font-weight: 600; }
+.kb-content p { margin-bottom: 0.75em; }
+.kb-content strong, .kb-content b { font-weight: 700; }
+.kb-content em, .kb-content i { font-style: italic; }
+.kb-content u { text-decoration: underline; }
+.kb-content s { text-decoration: line-through; }
+.kb-content a { color: #11998e; text-decoration: underline; }
+.kb-content a:hover { color: #0f806d; }
+/* Lists */
+.kb-content ul, .kb-content ol { margin-bottom: 0.75em; padding-left: 2em; }
+.kb-content li { margin-bottom: 0.25em; }
+.kb-content li.ql-indent-1 { padding-left: 2em; }
+.kb-content li.ql-indent-2 { padding-left: 4em; }
+.kb-content li.ql-indent-3 { padding-left: 6em; }
+.kb-content li.ql-indent-4 { padding-left: 8em; }
+/* Blockquote */
+.kb-content blockquote {
+    border-left: 4px solid #a0aec0; margin: 1em 0; padding: 0.75em 1.25em;
+    color: #4a5568; background: #f7fafc; border-radius: 4px; font-style: italic;
+}
+/* Inline code */
+.kb-content code {
+    background: #e9ecef; padding: 2px 6px; border-radius: 4px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875em; color: #d63384;
+}
+/* Code blocks — Quill v2 uses div.ql-code-block-container > div.ql-code-block */
+.kb-content .ql-code-block-container {
+    background: #1e1e2e; color: #cdd6f4; border-radius: 8px;
+    padding: 16px 20px; margin: 1em 0; overflow-x: auto;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875em; line-height: 1.6;
+}
+.kb-content .ql-code-block {
+    font-family: inherit; white-space: pre;
+}
+/* Fallback for Quill v1 <pre> code blocks */
+.kb-content pre, .kb-content pre.ql-syntax {
+    background: #1e1e2e; color: #cdd6f4; padding: 16px 20px; border-radius: 8px;
+    overflow-x: auto; margin: 1em 0; font-size: 0.875em; line-height: 1.5;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+.kb-content pre code, .kb-content pre.ql-syntax code {
+    background: none; padding: 0; color: inherit; font-size: inherit;
+}
+/* Text alignment (Quill classes) */
+.kb-content .ql-align-center { text-align: center; }
+.kb-content .ql-align-right { text-align: right; }
+.kb-content .ql-align-justify { text-align: justify; }
+/* Indentation (Quill classes) */
+.kb-content .ql-indent-1 { padding-left: 3em; }
+.kb-content .ql-indent-2 { padding-left: 6em; }
+.kb-content .ql-indent-3 { padding-left: 9em; }
+.kb-content .ql-indent-4 { padding-left: 12em; }
+/* Comment editor */
+.comment-editor-wrapper .ql-editor { min-height: 80px; font-size: 0.95rem; }
+.comment-editor-wrapper .ql-toolbar { border-radius: 8px 8px 0 0; background: #f1f3f5; }
+.comment-editor-wrapper .ql-container { border-radius: 0 0 8px 8px; }
+/* Comment content (rich text) */
+.comment-content { line-height: 1.6; }
+.comment-content p { margin-bottom: 0.4em; }
+.comment-content p:last-child { margin-bottom: 0; }
+.comment-content .ql-code-block-container { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 10px 14px; margin: 0.5em 0; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.85em; overflow-x: auto; }
+.comment-content .ql-code-block { white-space: pre; font-family: inherit; }
+.comment-content pre { background: #1e1e2e; color: #cdd6f4; padding: 10px 14px; border-radius: 6px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.85em; overflow-x: auto; margin: 0.5em 0; }
+.comment-content code { background: #e9ecef; padding: 1px 5px; border-radius: 3px; font-size: 0.875em; color: #d63384; }
+.comment-content pre code { background: none; padding: 0; color: inherit; }
+.comment-content blockquote { border-left: 3px solid #ccc; padding: 0.3em 0.8em; margin: 0.5em 0; color: #555; }
+.comment-content ul, .comment-content ol { padding-left: 1.5em; margin: 0.4em 0; }
+.comment-content a { color: #11998e; }
+/* Related articles compact */
+.related-tag { display: inline-block; margin: 4px; }
+.related-tag a { background: #f0f4f8; border: 1px solid #d2dae2; border-radius: 20px; padding: 5px 14px; font-size: 0.85em; color: #2d3748; text-decoration: none; display: inline-block; transition: all 0.2s; }
+.related-tag a:hover { background: #11998e; color: white; border-color: #11998e; }
+
+@media (max-width: 768px) {
+  .article-container { padding: 20px; }
+  .image-item { width: 150px; }
+  .image-item img { height: 100px; }
+}
 </style>
-</head>
-<body>
+{% endblock %}
 
-<nav class="navbar navbar-expand-lg">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="{{ url_for('employee_portal_dashboard') }}">
-      <i class="bi bi-person-badge"></i> Employee Portal
-    </a>
-    <div class="d-flex align-items-center">
-      <a href="{{ url_for('employee_portal_dashboard') }}" class="nav-link">
-        <i class="bi bi-house"></i> Dashboard
-      </a>
-      <a href="{{ url_for('employee_portal_kb') }}" class="nav-link {% if request.endpoint == 'employee_portal_kb' or request.endpoint == 'employee_portal_kb_view' %}active{% endif %}">
-        <i class="bi bi-book"></i> Knowledge Base
-      </a>
-      {# AI Chat moved to floating bubble (bottom-right). #}
-      <a href="{{ url_for('employee_portal_support_request') }}" class="nav-link">
-        <i class="bi bi-life-preserver"></i> Support Request
-      </a>
-      {% if employee.position and 'manager' in employee.position|lower %}
-      <a href="{{ url_for('employee_portal_my_requests') }}" class="nav-link">
-        <i class="bi bi-list-task"></i> My Requests
-      </a>
-      {% endif %}
-      <span class="text-white me-3">{{ employee.first_name }} {{ employee.last_name }}</span>
-      <a class="btn btn-outline-light btn-sm" href="{{ url_for('employee_portal_logout') }}">
-        <i class="bi bi-box-arrow-right"></i> Logout
-      </a>
-    </div>
-  </div>
-</nav>
-
+{% block content %}
 <div class="container mt-4">
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -483,10 +685,4 @@ function toggleComments() {
         : '<i class="bi bi-eye me-1"></i> Show Comments';
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-{# Floating AI chat bubble (auto-injected) #}
-{% if chat_widget_show and chat_widget_enabled %}
-  {% include '_chat_widget.html' %}
-{% endif %}
-</body>
-</html>
+{% endblock %}

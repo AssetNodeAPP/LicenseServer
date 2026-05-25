@@ -1,13 +1,8 @@
+{% extends "base.html" %}
 
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<title>Printer Supplies - Device Inventory</title>
+{% block title %}Printer Supplies - Device Inventory{% endblock %}
 
+{% block styles %}
 <style>
 body {
   background: #f8f9fa;
@@ -458,68 +453,463 @@ body {
     font-size: 1.75rem;
   }
 }
+
+
+body {
+  background: #f8f9fa;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container {
+  max-width: 100%;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+@media (min-width: 1400px) { .container { padding-left: 3rem; padding-right: 3rem; } }
+@media (min-width: 1920px) { .container { padding-left: 4rem; padding-right: 4rem; } }
+@media (min-width: 2560px) { .container { padding-left: 6rem; padding-right: 6rem; } }
+
+/* Navigation Bar */
+.navbar {
+  background: white !important;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 25px;
+  padding: 15px 20px;
+  border: 1px solid #e9ecef;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #2d3748;
+}
+
+.nav-link {
+  color: #2d3748 !important;
+  font-weight: 500;
+  padding: 8px 16px !important;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+  background: #f1f3f5;
+  color: #495057 !important;
+}
+
+.nav-link.active {
+  background: #495057;
+  color: white !important;
+}
+
+/* Page Header */
+.page-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: white;
+  border-radius: 15px;
+  padding: 20px 30px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  color: #2d3748;
+  display: inline-block;
+  border: 1px solid #e9ecef;
+}
+
+/* Filter Card */
+.filters-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.form-control, .form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #495057;
+  box-shadow: 0 0 0 4px rgba(73, 80, 87, 0.1);
+  outline: none;
+}
+
+.form-select-sm {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+/* Buttons */
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  padding: 8px 16px;
+}
+
+.btn-primary {
+  background: #495057;
+  box-shadow: 0 2px 8px rgba(73, 80, 87, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(73, 80, 87, 0.3);
+  background: #343a40;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(72, 187, 120, 0.4);
+}
+
+.btn-outline-primary {
+  border: 2px solid #495057;
+  color: #495057;
+  background: white;
+}
+
+.btn-outline-primary:hover {
+  background: #495057;
+  color: white;
+}
+
+.btn-outline-secondary {
+  border: 2px solid #e2e8f0;
+  color: #2d3748;
+  background: white;
+}
+
+.btn-outline-secondary:hover {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+/* Summary Cards */
+.summary-cards {
+  margin-bottom: 25px;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+  height: 100%;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.summary-card.active {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+}
+
+.summary-card h5 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: #2d3748;
+}
+
+.summary-card small {
+  color: #718096;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.summary-card.critical {
+  background: linear-gradient(135deg, rgba(245, 101, 101, 0.15) 0%, rgba(229, 62, 62, 0.15) 100%);
+  border-color: rgba(245, 101, 101, 0.3);
+}
+
+.summary-card.critical h5 {
+  color: #e53e3e;
+}
+
+.summary-card.low {
+  background: linear-gradient(135deg, rgba(237, 137, 54, 0.15) 0%, rgba(221, 107, 32, 0.15) 100%);
+  border-color: rgba(237, 137, 54, 0.3);
+}
+
+.summary-card.low h5 {
+  color: #dd6b20;
+}
+
+.summary-card.good {
+  background: linear-gradient(135deg, rgba(72, 187, 120, 0.15) 0%, rgba(56, 161, 105, 0.15) 100%);
+  border-color: rgba(72, 187, 120, 0.3);
+}
+
+.summary-card.good h5 {
+  color: #38a169;
+}
+
+/* Printer Cards */
+.printer-card {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+  height: 100%;
+  overflow: hidden;
+}
+
+.printer-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.printer-card .card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 15px 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.printer-card .card-header strong {
+  font-size: 1.1rem;
+}
+
+.last-scan {
+  color: #718096;
+  font-size: 0.75rem;
+  font-weight: 400;
+  display: block;
+  margin-top: 4px;
+}
+
+.printer-card .card-body {
+  padding: 20px;
+}
+
+.printer-info {
+  font-size: 0.85rem;
+  color: #718096;
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.printer-info i {
+  width: 16px;
+  text-align: center;
+  margin-right: 6px;
+  color: #495057;
+}
+
+/* Supply Table */
+.table {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+}
+
+.table thead th {
+  background: #f8f9fa;
+  color: #495057;
+  border: none;
+  padding: 10px 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table td {
+  padding: 10px 8px;
+  vertical-align: middle;
+}
+
+.supply-critical {
+  background: rgba(245, 101, 101, 0.1);
+}
+
+.supply-low {
+  background: rgba(237, 137, 54, 0.1);
+}
+
+.supply-good {
+  background: rgba(72, 187, 120, 0.05);
+}
+
+/* Progress Bar */
+.progress {
+  height: 24px;
+  border-radius: 8px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.6s ease;
+}
+
+.progress-bar.bg-danger {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%) !important;
+}
+
+.progress-bar.bg-warning {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%) !important;
+}
+
+.progress-bar.bg-success {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+}
+
+/* Badges */
+.badge {
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Pagination */
+.pagination {
+  background: white;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+}
+
+.page-link {
+  border: none;
+  color: #495057;
+  font-weight: 600;
+  margin: 0 2px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.page-link:hover {
+  background: #f1f3f5;
+  color: #212529;
+}
+
+.page-item.active .page-link {
+  background: #495057;
+  color: white;
+}
+
+.page-item.disabled .page-link {
+  color: #cbd5e0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .navbar {
+    padding: 10px 15px;
+  }
+
+  .page-title {
+    font-size: 1.8rem;
+    padding: 15px 20px;
+  }
+
+  .filters-card {
+    padding: 15px;
+  }
+
+  .summary-card h5 {
+    font-size: 2rem;
+  }
+
+  .printer-card .card-header {
+    padding: 12px 15px;
+  }
+
+  .printer-card .card-body {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .summary-card h5 {
+    font-size: 1.75rem;
+  }
+}
 </style>
-</head>
+{% endblock %}
 
-<body>
-
+{% block content %}
 <!-- Top navigation -->
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3">
-          <div class="container-fluid px-3 px-lg-4">
-            <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">
-              <i class="bi bi-house"></i> AssetNode
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav" aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
-              <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="topNav">
-              <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                {% if can_access('home') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}"><i class="bi bi-house"></i> Home</a></li>
-                {% endif %}
-                {% if can_access('list_devices') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('list_devices') }}"><i class="bi bi-laptop"></i> Devices</a></li>
-                {% endif %}
-                {% if can_access('device-lifecycle') %}
-                <li class="nav-item"><a class="nav-link" href="/device-lifecycle"><i class="bi bi-clock-history"></i> Lifecycle</a></li>
-                {% endif %}
-                {% if can_access('list_printers') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('list_printers') }}"><i class="bi bi-printer"></i> Printers</a></li>
-                {% endif %}
-                {% if can_access('tasks_list') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('tasks_list') }}"><i class="bi bi-list-check"></i> Tasks</a></li>
-                {% endif %}
-                {% if can_access('employees_list') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('employees_list') }}"><i class="bi bi-people"></i> Employees</a></li>
-                {% endif %}
-                {% if can_access('items_list') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('items_list') }}"><i class="bi bi-box-seam"></i> Inventory</a></li>
-                {% endif %}
-                {% if can_access('software-licenses') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('software_licenses_page') }}"><i class="bi bi-key"></i> Software</a></li>
-                {% endif %}
-                {% if can_access('printer_supplies') %}
-                <li class="nav-item"><a class="nav-link active" href="{{ url_for('printer_supplies') }}"><i class="bi bi-droplet"></i> Levels</a></li>
-                {% endif %}
-                <li class="nav-item">
-                {% if can_access('printer_supplies') %}
-                    <a class="nav-link" aria-current="page" href="{{ url_for('supply_trends') }}">
-                        <i class="bi bi-graph-up"></i> Trends
-                    </a>
-                        </li>
-                {% endif %}
-                {% if can_access('scanner_page') %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('scanner_page') }}"><i class="bi bi-upc-scan"></i> Scanner</a></li>
-                {% endif %}
-              </ul>
-              <div class="d-flex align-items-center gap-2">
-                {% if logo %}<img src="{{ logo }}" alt="Logo" style="max-height:36px;">{% endif %}
-                {% if user %}<span class="me-2 small text-muted">{{ user.username }} ({{ user.role }})</span>{% endif %}
-                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a>
-              </div>
-            </div>
-          </div>
-        </nav>
+
 
 <div class="container">
 
@@ -788,8 +1178,9 @@ body {
     </div>
   </div>
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}
 <script>
 let consumablesModal;
 let createTasksModal;
@@ -1027,9 +1418,4 @@ function goToSelectedItem() {
 
 
 </script>
-{# Floating AI chat bubble (auto-injected) #}
-{% if chat_widget_show and chat_widget_enabled %}
-  {% include '_chat_widget.html' %}
-{% endif %}
-</body>
-</html>
+{% endblock %}

@@ -1,221 +1,185 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-<title>User Management - License Generator</title>
+{% extends "base.html" %}
+
+{% block title %}User Management - License Generator{% endblock %}
+
+{% block styles %}
 <style>
-body {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.users-page {
+  padding: 20px 0 40px;
 }
 
-.container {
-  max-width: 1000px;
-}
+.container { max-width: 1000px; }
 
 .page-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 15px;
-  padding: 20px 25px;
-  margin-bottom: 25px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 15px !important;
+  padding: 20px 25px !important;
+  margin-bottom: 25px !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35) !important;
+}
+
+.card {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 15px !important;
+  padding: 25px !important;
+  margin-bottom: 25px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
 }
 
 .page-title {
   font-size: 1.8rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: var(--color-text) !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: var(--color-text) !important;
+  margin: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.page-title i {
+  background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin: 0;
-}
-
-.btn {
-  border-radius: 10px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  border: none;
-  padding: 8px 16px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+  background-clip: text;
 }
 
 .btn-outline-secondary {
-  border: 2px solid #e2e8f0;
-  color: #2d3748;
-  background: white;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #e2e8f0 !important;
+  background: transparent !important;
 }
-
 .btn-outline-secondary:hover {
-  background: #6c757d;
-  color: white;
-  border-color: #6c757d;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .btn-outline-danger {
-  border: 2px solid #e53e3e;
-  color: #e53e3e;
-  background: white;
+  border: 1px solid rgba(239, 68, 68, 0.5) !important;
+  color: #f87171 !important;
+  background: transparent !important;
 }
-
 .btn-outline-danger:hover {
-  background: #e53e3e;
-  color: white;
-  border-color: #e53e3e;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-color: #f87171 !important;
 }
 
 .btn-outline-success {
-  border: 2px solid #38a169;
-  color: #38a169;
-  background: white;
+  border: 1px solid rgba(16, 185, 129, 0.5) !important;
+  color: #34d399 !important;
+  background: transparent !important;
 }
-
 .btn-outline-success:hover {
-  background: #38a169;
-  color: white;
-  border-color: #38a169;
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #6ee7b7 !important;
+  border-color: #34d399 !important;
 }
 
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 0.85rem;
+.btn-outline-warning {
+  border: 1px solid rgba(245, 158, 11, 0.5) !important;
+  color: #fbbf24 !important;
+  background: transparent !important;
+}
+.btn-outline-warning:hover {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fcd34d !important;
+  border-color: #fbbf24 !important;
 }
 
-.card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 15px;
-  padding: 25px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  margin-bottom: 25px;
-}
+.btn-sm { padding: 6px 12px !important; font-size: 0.85rem !important; }
 
 .card-title {
   font-size: 1.3rem;
   font-weight: 700;
-  color: #2d3748;
-  margin-bottom: 20px;
+  color: #f1f5f9 !important;
+  margin-bottom: 20px !important;
 }
 
 .form-label {
   font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 6px;
-  font-size: 0.9rem;
+  color: #cbd5e1 !important;
+  margin-bottom: 6px !important;
+  font-size: 0.9rem !important;
 }
 
-.form-control, .form-select {
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 10px 14px;
-  transition: all 0.3s ease;
-  background: white;
-}
-
-.form-control:focus, .form-select:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  outline: none;
-}
-
-.table {
-  margin-bottom: 0;
-}
+.table { margin-bottom: 0 !important; }
 
 .table thead th {
-  background: #f8f9fa;
-  color: #495057;
-  border: none;
-  padding: 12px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+  border: none !important;
+  padding: 12px !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  text-transform: uppercase !important;
 }
 
 .table tbody tr {
   transition: all 0.2s ease;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #1e293b !important;
 }
 
-.table tbody tr:hover {
-  background: #f8f9fa;
-}
-
-.table td {
-  padding: 12px;
-  vertical-align: middle;
-}
+.table tbody tr:hover { background: rgba(255, 255, 255, 0.05) !important; }
+.table td { padding: 12px !important; vertical-align: middle !important; }
 
 .badge {
-  font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  font-weight: 600 !important;
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
 }
 
-.alert {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
+.alert { border-radius: 12px !important; }
 
 .alert-success {
-  background: linear-gradient(135deg, rgba(56, 161, 105, 0.15) 0%, rgba(72, 187, 120, 0.15) 100%);
-  border-left: 4px solid #38a169;
-  color: #22543d;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-left: 4px solid #10b981 !important;
+  color: #34d399 !important;
 }
-
 .alert-danger {
-  background: linear-gradient(135deg, rgba(229, 62, 62, 0.15) 0%, rgba(245, 101, 101, 0.15) 100%);
-  border-left: 4px solid #e53e3e;
-  color: #742a2a;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-left: 4px solid #ef4444 !important;
+  color: #f87171 !important;
 }
-
 .alert-warning {
-  background: linear-gradient(135deg, rgba(237, 137, 54, 0.15) 0%, rgba(245, 158, 11, 0.15) 100%);
-  border-left: 4px solid #ed8936;
-  color: #7c2d12;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-left: 4px solid #f59e0b !important;
+  color: #fbbf24 !important;
 }
 
-.form-text {
-  font-size: 0.85rem;
-  color: #718096;
+.form-text { font-size: 0.85rem !important; color: #94a3b8 !important; }
+
+.text-muted { color: #94a3b8 !important; }
+
+.email-link {
+  color: #60a5fa !important;
+  text-decoration: none !important;
+}
+.email-link:hover {
+  color: #93c5fd !important;
+  text-decoration: underline !important;
+}
+
+.no-email {
+  color: #64748b !important;
+  font-size: 0.85rem !important;
 }
 
 @media (max-width: 768px) {
-  body {
-    padding: 10px;
-  }
-
-  .page-header {
-    padding: 15px 20px;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .card {
-    padding: 15px;
-  }
+  .page-title { font-size: 1.5rem !important; }
+  .users-page { padding: 15px 0 30px !important; }
 }
 </style>
-</head>
-<body>
+{% endblock %}
 
+{% block content %}
+<div class="users-page">
 <div class="container">
   <div class="page-header">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -316,16 +280,16 @@ body {
             </td>
             <td>
               {% if rec.email %}
-                <a href="mailto:{{ rec.email }}" class="text-decoration-none">
+                <a href="mailto:{{ rec.email }}" class="email-link">
                   <i class="bi bi-envelope"></i> {{ rec.email }}
                 </a>
               {% else %}
-                <span class="text-muted small">No email</span>
+                <span class="no-email">No email</span>
               {% endif %}
             </td>
             <td>
               {% if rec.locked_by_admin %}
-                <span class="badge bg-warning text-dark">
+                <span class="badge bg-warning">
                   <i class="bi bi-person-dash"></i> Locked
                 </span>
                 {% if rec.lock_reason %}
@@ -375,6 +339,7 @@ body {
       </table>
     </div>
   </div>
+</div>
 </div>
 
 <script>
@@ -427,5 +392,4 @@ function unlockUser(username) {
 {% if chat_widget_show and chat_widget_enabled %}
   {% include '_chat_widget.html' %}
 {% endif %}
-</body>
-</html>
+{% endblock %}

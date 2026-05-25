@@ -1,19 +1,194 @@
-<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="theme-color" content="#667eea">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="AssetNode AI">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='pwa-icon-180.png') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <title>2FA Verification - AssetNode AI</title>
-    <style>
+{% extends "base.html" %}
+
+{% block title %}2FA Verification - AssetNode AI{% endblock %}
+
+{% block styles %}
+<style>
+body { padding-top: 0 !important; }
+/* Splash Screen */
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        #splashScreen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-logo {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            color: white;
+            margin-bottom: 20px;
+            animation: splashPulse 2s ease-in-out infinite, splashRotate 10s linear infinite;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes splashPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes splashRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .splash-title {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .splash-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .splash-loader {
+            margin-top: 40px;
+            display: flex;
+            gap: 8px;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .splash-loader span {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            animation: splashBounce 1.4s infinite;
+        }
+
+        .splash-loader span:nth-child(2) { animation-delay: 0.2s; }
+        .splash-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes splashBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-15px); }
+        }
+
+        .splash-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            top: 0;
+            left: 0;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            from { transform: translateY(100vh) rotate(0deg); }
+            to { transform: translateY(-100px) rotate(360deg); }
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .login-icon {
+            width: 60px; height: 60px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+            color: white; font-size: 1.8rem;
+        }
+        .login-title {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        .login-subtitle {
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+        .form-label {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        .form-control {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 8px;
+            font-size: 1.2rem;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        .btn-verify {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none;
+            border-radius: 12px; padding: 12px;
+            width: 100%; font-weight: 600;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        .alert {
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+        .info-text {
+            font-size: 0.85em; color: #718096;
+            text-align: center; margin-top: 15px;
+        }
+    
+
         /* Splash Screen */
         #splashScreen {
             position: fixed;
@@ -196,10 +371,15 @@
             font-size: 0.85em; color: #718096;
             text-align: center; margin-top: 15px;
         }
-    </style>
-</head>
-<body>
-    <!-- Splash Screen -->
+</style>
+{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block body_class %}{% endblock %}
+
+{% block content %}
+<!-- Splash Screen -->
     <div id="splashScreen">
         <div class="splash-particles" id="splashParticles"></div>
         <div class="splash-logo">
@@ -299,5 +479,4 @@
             }, 5000);
         }
     </script>
-</body>
-</html>
+{% endblock %}

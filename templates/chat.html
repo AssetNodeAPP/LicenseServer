@@ -1,11 +1,244 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>IT Support Chat - AssetNode</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
+{% extends "base.html" %}
+
+{% block title %}IT Support Chat - AssetNode{% endblock %}
+
+{% block styles %}
+<style>
+body {
+            background: #f8f9fa;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: white !important;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+            padding: 15px 20px;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #2d3748 !important;
+        }
+
+        .nav-link {
+            color: #2d3748 !important;
+            font-weight: 500;
+            padding: 8px 16px !important;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: #f1f3f5;
+        }
+
+        .nav-link.active {
+            background: #495057;
+            color: white !important;
+        }
+
+        .chat-container {
+            max-width: 900px;
+            margin: 0 auto 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+        }
+
+        .chat-header h3 {
+            margin: 0 0 8px 0;
+            font-weight: 700;
+        }
+
+        .chat-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.95em;
+        }
+
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.user .message-avatar {
+            background: #495057;
+            color: white;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+
+        .message.assistant .message-bubble {
+            background: white;
+            color: #2d3748;
+            border: 1px solid #e9ecef;
+            border-top-left-radius: 4px;
+        }
+
+        .message.user .message-bubble {
+            background: #667eea;
+            color: white;
+            border-top-right-radius: 4px;
+        }
+
+        .message-bubble p {
+            margin-bottom: 0.5em;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .sources {
+            font-size: 0.85em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .sources a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 8px;
+        }
+
+        .sources a:hover {
+            text-decoration: underline;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .chat-input {
+            padding: 20px 30px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-group {
+            gap: 10px;
+        }
+
+        .form-control {
+            border-radius: 25px;
+            padding: 12px 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .btn-send:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .welcome-message i {
+            font-size: 3em;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+    
+
         body {
             background: #f8f9fa;
             min-height: 100vh;
@@ -239,26 +472,12 @@
             border-radius: 8px;
             margin-bottom: 15px;
         }
-    </style>
-</head>
-<body>
-    <div class="container mt-4">
-        <nav class="navbar navbar-expand-lg">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="{{ url_for('home') }}">
-                    <img src="{{ logo }}" alt="Logo" style="height: 40px; margin-right: 10px;">
-                    IT Support Chat
-                </a>
-                <div class="d-flex gap-2">
-                    <a href="{{ url_for('kb_list') }}" class="nav-link">
-                        <i class="bi bi-book"></i> Knowledge Base
-                    </a>
-                    <a href="{{ url_for('home') }}" class="nav-link">
-                        <i class="bi bi-house"></i> Home
-                    </a>
-                </div>
-            </div>
-        </nav>
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+        
 
         <div class="chat-container">
             <div class="chat-header">
@@ -435,5 +654,4 @@
         // Focus input on load
         messageInput.focus();
     </script>
-</body>
-</html>
+{% endblock %}

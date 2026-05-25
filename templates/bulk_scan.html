@@ -1,12 +1,205 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Bulk Scan - Inventory</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <style>
+{% extends "base.html" %}
+
+{% block title %}Bulk Scan - Inventory{% endblock %}
+
+{% block styles %}
+<style>
+body {
+      background: #f8f9fa;
+      min-height: 100vh;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container { max-width: 1200px; }
+    
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card {
+      border-radius: 15px;
+      border: 1px solid #e9ecef;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      background: white;
+      margin-bottom: 20px;
+    }
+
+    .card-body { padding: 25px; }
+
+    .scanner-section {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+
+    .scanner-section .form-label { color: white; }
+
+    .form-control, .form-select {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #495057;
+      box-shadow: 0 0 0 4px rgba(73, 80, 87, 0.1);
+      outline: none;
+    }
+
+    .btn {
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border: none;
+      padding: 10px 20px;
+    }
+
+    .btn-primary { background: #495057; box-shadow: 0 2px 8px rgba(73, 80, 87, 0.2); }
+    .btn-success { background: #38ef7d; color: #1a1a1a; }
+    .btn-danger { background: #f56565; }
+    .btn-warning { background: #ed8936; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #2d3748; }
+    .btn:hover { transform: translateY(-2px); }
+
+    .table-responsive {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .table thead th {
+      background: #f1f3f5;
+      color: #495057;
+      border: none;
+      padding: 14px 12px;
+      font-weight: 600;
+    }
+
+    .table tbody tr {
+      transition: all 0.2s ease;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .table tbody tr:hover { background: #f8f9fa; }
+
+    .delta-positive { color: #38ef7d; font-weight: 700; }
+    .delta-negative { color: #f56565; font-weight: 700; }
+    .delta-neutral { color: #718096; font-weight: 700; }
+
+    .insufficient-stock {
+      background-color: #f8d7da !important;
+      opacity: 0.6;
+    }
+    .insufficient-stock td {
+      text-decoration: line-through;
+      color: #721c24;
+    }
+    .insufficient-stock .delta-negative,
+    .insufficient-stock .delta-positive {
+      color: #721c24;
+    }
+
+    .batch-summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .stat-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 12px 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-badge strong {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+    }
+
+    .stat-badge span {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    #scan_msg {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      padding: 15px 25px;
+      border-radius: 12px;
+      display: none;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    #scan_msg.success { background: #38ef7d; color: #1a1a1a; }
+    #scan_msg.error { background: #f56565; color: white; }
+
+    .prefix-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .prefix-A { background: #38ef7d; color: #1a1a1a; }
+    .prefix-R { background: #f56565; color: white; }
+    .prefix-L { background: #4299e1; color: white; }
+
+    /* Store locked state styling */
+    #target_store:disabled {
+      background-color: #f1f3f5;
+      color: #868e96;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    .store-locked-hint {
+      font-size: 0.78rem;
+      color: #868e96;
+      margin-top: 4px;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .container { padding-left: 1rem; padding-right: 1rem; }
+      .page-title { font-size: 1.5rem; }
+    }
+  
+
     body {
       background: #f8f9fa;
       min-height: 100vh;
@@ -201,10 +394,10 @@
       .container { padding-left: 1rem; padding-right: 1rem; }
       .page-title { font-size: 1.5rem; }
     }
-  </style>
-</head>
-<body>
+</style>
+{% endblock %}
 
+{% block content %}
 <div class="container">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="page-title mb-0">
@@ -365,8 +558,9 @@
     </table>
   </div>
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const scanInput = document.getElementById('scan_input');
@@ -645,9 +839,4 @@ function removeItem(barcode) {
   });
 }
 </script>
-{# Floating AI chat bubble (auto-injected) #}
-{% if chat_widget_show and chat_widget_enabled %}
-  {% include '_chat_widget.html' %}
-{% endif %}
-</body>
-</html>
+{% endblock %}
